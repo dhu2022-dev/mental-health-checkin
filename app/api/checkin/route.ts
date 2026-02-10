@@ -41,19 +41,32 @@ export async function POST(req: NextRequest) {
       mood = parsed.mood;
       notes = parsed.notes;
     } else {
+      // Shortcuts may send "Mood", "Score", or "mood"; accept any
+      const moodInput =
+        body.mood ?? body.Mood ?? body.score ?? body.Score;
       const moodVal =
-        typeof body.mood === "number" ? body.mood : parseInt(String(body.mood), 10);
+        typeof moodInput === "number"
+          ? moodInput
+          : parseInt(String(moodInput ?? "").trim(), 10);
       if (Number.isNaN(moodVal) || moodVal < 1 || moodVal > 10) {
         return NextResponse.json(
-          { error: "Invalid body: need mood (1-10) and optional date, notes" },
+          {
+            error: "Invalid body: need mood (1-10) and optional date, notes",
+            received: {
+              keys: Object.keys(body),
+              mood: body.mood ?? body.Mood ?? body.score,
+            },
+          },
           { status: 400 }
         );
       }
       mood = moodVal;
+      const notesInput = body.notes ?? body.Notes ?? body.note;
       notes =
-        typeof body.notes === "string" ? body.notes.trim() || null : null;
-      if (body.date && typeof body.date === "string") {
-        const d = parseShortcutDate(body.date);
+        typeof notesInput === "string" ? notesInput.trim() || null : null;
+      const dateInput = body.date ?? body.Date;
+      if (dateInput != null && typeof dateInput === "string") {
+        const d = parseShortcutDate(dateInput);
         recorded_at = d ?? new Date();
       } else {
         recorded_at = new Date();
