@@ -41,13 +41,26 @@ export async function POST(req: NextRequest) {
       mood = parsed.mood;
       notes = parsed.notes;
     } else {
-      // Shortcuts may send "Mood", "Score", or "mood"; accept any
+      // Shortcuts may send "Mood", "Score", or "mood"; value can be number, string, or object {}
       const moodInput =
         body.mood ?? body.Mood ?? body.score ?? body.Score;
-      const moodVal =
-        typeof moodInput === "number"
-          ? moodInput
-          : parseInt(String(moodInput ?? "").trim(), 10);
+      let moodVal: number;
+      if (typeof moodInput === "number") {
+        moodVal = moodInput;
+      } else if (typeof moodInput === "object" && moodInput !== null) {
+        // Shortcuts sometimes serializes number as {} or { value: N }; try to unwrap
+        const unwrapped =
+          (moodInput as { value?: number; amount?: number; number?: number }).value ??
+          (moodInput as { value?: number }).amount ??
+          (moodInput as { number?: number }).number ??
+          Object.values(moodInput)[0];
+        moodVal =
+          typeof unwrapped === "number"
+            ? unwrapped
+            : parseInt(String(unwrapped ?? "").trim(), 10);
+      } else {
+        moodVal = parseInt(String(moodInput ?? "").trim(), 10);
+      }
       if (Number.isNaN(moodVal) || moodVal < 1 || moodVal > 10) {
         return NextResponse.json(
           {
