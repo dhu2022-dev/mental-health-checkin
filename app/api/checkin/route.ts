@@ -40,12 +40,16 @@ export async function POST(req: NextRequest) {
       recorded_at = parsed.recorded_at;
       mood = parsed.mood;
       notes = parsed.notes;
-    } else if (
-      typeof body.mood === "number" &&
-      body.mood >= 1 &&
-      body.mood <= 10
-    ) {
-      mood = body.mood;
+    } else {
+      const moodVal =
+        typeof body.mood === "number" ? body.mood : parseInt(String(body.mood), 10);
+      if (Number.isNaN(moodVal) || moodVal < 1 || moodVal > 10) {
+        return NextResponse.json(
+          { error: "Invalid body: need mood (1-10) and optional date, notes" },
+          { status: 400 }
+        );
+      }
+      mood = moodVal;
       notes =
         typeof body.notes === "string" ? body.notes.trim() || null : null;
       if (body.date && typeof body.date === "string") {
@@ -54,11 +58,6 @@ export async function POST(req: NextRequest) {
       } else {
         recorded_at = new Date();
       }
-    } else {
-      return NextResponse.json(
-        { error: "Invalid body: need mood (1-10) and optional date, notes" },
-        { status: 400 }
-      );
     }
   } else if (contentType.includes("text/plain")) {
     const raw = await req.text();
