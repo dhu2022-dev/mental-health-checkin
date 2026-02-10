@@ -21,8 +21,9 @@ export function parseSemicolonLine(raw: string): ParsedCheckIn | null {
   const parts = raw.split(";").map((p) => p.trim());
   if (parts.length < 2) return null;
   const [datePart, moodPart, ...noteParts] = parts;
-  const recorded_at = parseShortcutDate(datePart);
-  if (!recorded_at) return null;
+  // Try to parse the date from the first segment; if it fails, fall back to "now"
+  const parsedDate = parseShortcutDate(datePart);
+  const recorded_at = parsedDate ?? new Date();
   const mood = parseInt(moodPart ?? "", 10);
   if (Number.isNaN(mood) || mood < 1 || mood > 10) return null;
   const notes = noteParts.length > 0 ? noteParts.join(";").trim() || null : null;
