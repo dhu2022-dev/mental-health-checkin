@@ -21,82 +21,78 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  let recorded_at: Date;
-  let mood: number;
-  let notes: string | null = null;
+  // Parse the incoming payload into a single canonical shape.
+  // Expected formats:
+  // 1) JSON: { "raw": "Feb 10, 2026 at 9:02AM; 5; Some notes" }
+  // 2) Plain text body: "Feb 10, 2026 at 9:02AM; 5; Some notes"
+  // 3) JSON: { "mood": 5, "notes": "Some notes", "date": "Feb 10, 2026 at 9:02AM" }
+  //
+  // All of these become { recorded_at: Date, mood: number, notes: string | null }.
+  let parsed:
+    | {
+        recorded_at: Date;
+        mood: number;
+        notes: string | null;
+      }
+    | null = null;
 
   const contentType = req.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
     const body = await req.json();
-    if (body.raw && typeof body.raw === "string") {
-      const parsed = parseSemicolonLine(body.raw);
-      if (!parsed) {
+    if (body.raw !== undefined && body.raw !== null) {
+      // Primary path: semicolon-separated line, same as your Apple Note.
+      const raw = String(body.raw);
+      const fromRaw = parseSemicolonLine(raw);
+      if (!fromRaw) {
         return NextResponse.json(
           { error: "Invalid raw format: expected 'date; mood; notes'" },
           { status: 400 }
         );
       }
-      recorded_at = parsed.recorded_at;
-      mood = parsed.mood;
-      notes = parsed.notes;
-    } else {
-      // Shortcuts may send "Mood", "Score", or "mood"; value can be number, string, or object {}
-      const moodInput =
-        body.mood ?? body.Mood ?? body.score ?? body.Score;
-      let moodVal: number;
-      if (typeof moodInput === "number") {
-        moodVal = moodInput;
-      } else if (typeof moodInput === "object" && moodInput !== null) {
-        // Shortcuts sometimes serializes number as {} or { value: N }; try to unwrap
-        const unwrapped =
-          (moodInput as { value?: number; amount?: number; number?: number }).value ??
-          (moodInput as { value?: number }).amount ??
-          (moodInput as { number?: number }).number ??
-          Object.values(moodInput)[0];
-        moodVal =
-          typeof unwrapped === "number"
-            ? unwrapped
-            : parseInt(String(unwrapped ?? "").trim(), 10);
-      } else {
-        moodVal = parseInt(String(moodInput ?? "").trim(), 10);
-      }
-      if (Number.isNaN(moodVal) || moodVal < 1 || moodVal > 10) {
+      parsed = fromRaw;
+    } else if (body.mood !== undefined) {
+      // Simple JSON body, useful for curl / manual tests.
+      const moodNum = Number(body.mood);
+      if (!Number.isFinite(moodNum) || moodNum < 1 || moodNum > 10) {
         return NextResponse.json(
-          {
-            error: "Invalid body: need mood (1-10) and optional date, notes",
-            received: {
-              keys: Object.keys(body),
-              mood: body.mood ?? body.Mood ?? body.score,
-            },
-          },
+          { error: "Invalid mood: must be a number 1-10" },
           { status: 400 }
         );
       }
-      mood = moodVal;
-      const notesInput = body.notes ?? body.Notes ?? body.note;
-      notes =
-        typeof notesInput === "string" ? notesInput.trim() || null : null;
-      const dateInput = body.date ?? body.Date;
-      if (dateInput != null && typeof dateInput === "string") {
-        const d = parseShortcutDate(dateInput);
+      const notesValue =
+        typeof body.notes === "string" ? body.notes.trim() || null : null;
+      let recorded_at: Date;
+      if (body.date && typeof body.date === "string") {
+        const d = parseShortcutDate(body.date);
         recorded_at = d ?? new Date();
       } else {
         recorded_at = new Date();
       }
+      parsed = {
+        recorded_at,
+        mood: moodNum,
+        notes: notesValue,
+      };
+    } else {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid body: expected either { raw: 'date; mood; notes' } or { mood, notes?, date? }",
+        },
+        { status: 400 }
+      );
     }
   } else if (contentType.includes("text/plain")) {
     const raw = await req.text();
-    const parsed = parseSemicolonLine(raw);
-    if (!parsed) {
+    const fromRaw = parseSemicolonLine(raw);
+    if (!fromRaw) {
       return NextResponse.json(
         { error: "Invalid format: expected 'date; mood; notes'" },
         { status: 400 }
       );
     }
-    recorded_at = parsed.recorded_at;
-    mood = parsed.mood;
-    notes = parsed.notes;
+    parsed = fromRaw;
   } else {
     return NextResponse.json(
       { error: "Content-Type must be application/json or text/plain" },
@@ -110,6 +106,16 @@ export async function POST(req: NextRequest) {
       { status: 503 }
     );
   }
+
+  if (!parsed) {
+    return NextResponse.json(
+      { error: "Unable to parse check-in payload" },
+      { status: 400 }
+    );
+  }
+
+  const { recorded_at, mood, notes } = parsed;
+
   const { error } = await supabase.from("check_ins").insert({
     mood,
     notes,
