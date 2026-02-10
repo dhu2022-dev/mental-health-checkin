@@ -21,6 +21,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Basic request info for debugging (appears in Vercel function logs)
+  const contentType = req.headers.get("content-type") ?? "";
+  console.log("[checkin] incoming request", {
+    method: req.method,
+    contentType,
+  });
+
   // Parse the incoming payload into a single canonical shape.
   // Expected formats:
   // 1) JSON: { "raw": "Feb 10, 2026 at 9:02AM; 5; Some notes" }
@@ -36,13 +43,13 @@ export async function POST(req: NextRequest) {
       }
     | null = null;
 
-  const contentType = req.headers.get("content-type") ?? "";
-
   if (contentType.includes("application/json")) {
     const body = await req.json();
+    console.log("[checkin] JSON body", body);
     if (body.raw !== undefined && body.raw !== null) {
       // Primary path: semicolon-separated line, same as your Apple Note.
       const raw = String(body.raw);
+      console.log("[checkin] using raw field", raw);
       const fromRaw = parseSemicolonLine(raw);
       if (!fromRaw) {
         return NextResponse.json(
@@ -55,6 +62,10 @@ export async function POST(req: NextRequest) {
       // Simple JSON body, useful for curl / manual tests.
       const moodNum = Number(body.mood);
       if (!Number.isFinite(moodNum) || moodNum < 1 || moodNum > 10) {
+        console.log("[checkin] invalid mood in JSON body", {
+          rawMood: body.mood,
+          moodNum,
+        });
         return NextResponse.json(
           { error: "Invalid mood: must be a number 1-10" },
           { status: 400 }
@@ -75,6 +86,9 @@ export async function POST(req: NextRequest) {
         notes: notesValue,
       };
     } else {
+      console.log("[checkin] JSON body missing raw/mood fields", {
+        keys: Object.keys(body),
+      });
       return NextResponse.json(
         {
           error:
@@ -85,6 +99,7 @@ export async function POST(req: NextRequest) {
     }
   } else if (contentType.includes("text/plain")) {
     const raw = await req.text();
+    console.log("[checkin] text/plain body", raw);
     const fromRaw = parseSemicolonLine(raw);
     if (!fromRaw) {
       return NextResponse.json(
@@ -108,6 +123,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (!parsed) {
+    console.log("[checkin] parsed payload is null after handling", {
+      contentType,
+    });
     return NextResponse.json(
       { error: "Unable to parse check-in payload" },
       { status: 400 }
@@ -115,6 +133,11 @@ export async function POST(req: NextRequest) {
   }
 
   const { recorded_at, mood, notes } = parsed;
+  console.log("[checkin] inserting row", {
+    recorded_at: recorded_at.toISOString(),
+    mood,
+    notes,
+  });
 
   const { error } = await supabase.from("check_ins").insert({
     mood,
