@@ -42,6 +42,17 @@ function toISODate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Local date at start of day (00:00) or end of day (23:59:59.999) as ISO for API */
+function toLocalDayISO(localDate: Date, endOfDay: boolean) {
+  const y = localDate.getFullYear();
+  const m = localDate.getMonth();
+  const d = localDate.getDate();
+  const boundary = endOfDay
+    ? new Date(y, m, d, 23, 59, 59, 999)
+    : new Date(y, m, d, 0, 0, 0, 0);
+  return boundary.toISOString();
+}
+
 function formatRecordedAt(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, {
@@ -120,13 +131,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const range = RANGES[rangeIndex];
-    const to = new Date();
+    const now = new Date();
+    const to = now;
     const from = range.days
-      ? new Date(to.getTime() - range.days * 24 * 60 * 60 * 1000)
+      ? new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000)
       : null;
     const params = new URLSearchParams();
-    params.set("to", toISODate(to) + "T23:59:59.999Z");
-    if (from) params.set("from", toISODate(from) + "T00:00:00.000Z");
+    params.set("to", toLocalDayISO(to, true));
+    if (from) params.set("from", toLocalDayISO(from, false));
     setLoading(true);
     setError(null);
     fetch(`/api/checkins?${params}`)
