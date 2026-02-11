@@ -53,7 +53,15 @@ export async function POST(req: NextRequest) {
       const fromRaw = parseSemicolonLine(raw);
       if (!fromRaw) {
         return NextResponse.json(
-          { error: "Invalid raw format: expected 'date; mood; notes'" },
+          {
+            error: "Invalid raw format: expected 'date; mood; notes'",
+            debug: {
+              rawType: typeof body.raw,
+              rawString: raw,
+              rawLength: raw.length,
+              parts: raw.split(";").map((p) => p.trim()),
+            },
+          },
           { status: 400 }
         );
       }
