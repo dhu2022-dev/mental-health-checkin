@@ -136,9 +136,30 @@ export async function POST(req: NextRequest) {
       );
     }
     parsed = fromRaw;
+  } else if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
+    // Form body: Shortcuts "Form" option serializes text correctly.
+    const formData = await req.formData();
+    const rawVal = formData.get("raw");
+    const raw = typeof rawVal === "string" ? rawVal : "";
+    const fromRaw = parseSemicolonLine(raw);
+    if (!fromRaw) {
+      return NextResponse.json(
+        {
+          error: "Invalid raw format: expected form field 'raw' with 'date; mood; notes'",
+        },
+        { status: 400 }
+      );
+    }
+    parsed = fromRaw;
   } else {
     return NextResponse.json(
-      { error: "Content-Type must be application/json or text/plain" },
+      {
+        error:
+          "Content-Type must be application/json, text/plain, or application/x-www-form-urlencoded",
+      },
       { status: 400 }
     );
   }
