@@ -67,15 +67,20 @@ export async function POST(req: NextRequest) {
       console.log("[checkin] using raw field", raw);
       const fromRaw = parseSemicolonLine(raw);
       if (!fromRaw) {
+        const debug: Record<string, unknown> = {
+          rawType: typeof body.raw,
+          rawString: raw,
+          rawLength: raw.length,
+          parts: raw.split(";").map((p) => p.trim()),
+        };
+        if (typeof body.raw === "object" && body.raw !== null) {
+          debug.rawKeys = Object.keys(body.raw as object);
+          debug.rawJson = JSON.stringify(body.raw);
+        }
         return NextResponse.json(
           {
             error: "Invalid raw format: expected 'date; mood; notes'",
-            debug: {
-              rawType: typeof body.raw,
-              rawString: raw,
-              rawLength: raw.length,
-              parts: raw.split(";").map((p) => p.trim()),
-            },
+            debug,
           },
           { status: 400 }
         );
