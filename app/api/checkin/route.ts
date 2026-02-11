@@ -48,7 +48,22 @@ export async function POST(req: NextRequest) {
     console.log("[checkin] JSON body", body);
     if (body.raw !== undefined && body.raw !== null) {
       // Primary path: semicolon-separated line, same as your Apple Note.
-      const raw = String(body.raw);
+      // Shortcuts sometimes sends raw as an object { text: "..." }; extract the string.
+      let raw: string;
+      if (typeof body.raw === "string") {
+        raw = body.raw;
+      } else if (typeof body.raw === "object") {
+        const obj = body.raw as Record<string, unknown>;
+        const extracted =
+          (typeof obj.text === "string" ? obj.text : null) ??
+          (typeof obj.string === "string" ? obj.string : null) ??
+          (typeof obj.value === "string" ? obj.value : null) ??
+          (typeof obj.content === "string" ? obj.content : null) ??
+          (Object.values(obj).find((v) => typeof v === "string") as string | undefined);
+        raw = extracted ?? String(body.raw);
+      } else {
+        raw = String(body.raw);
+      }
       console.log("[checkin] using raw field", raw);
       const fromRaw = parseSemicolonLine(raw);
       if (!fromRaw) {
