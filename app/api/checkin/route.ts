@@ -30,11 +30,11 @@ export async function POST(req: NextRequest) {
 
   // Parse the incoming payload into a single canonical shape.
   // Expected formats:
-  // 1) JSON: { "raw": "Feb 10, 2026 at 9:02AM; 5; Some notes" }
-  // 2) Plain text body: "Feb 10, 2026 at 9:02AM; 5; Some notes"
-  // 3) JSON: { "mood": 5, "notes": "Some notes", "date": "Feb 10, 2026 at 9:02AM" }
-  //
-  // All of these become { recorded_at: Date, mood: number, notes: string | null }.
+  // 1) Query: ?raw=date;mood;notes (most reliable from Shortcuts)
+  // 2) JSON: { "raw": "Feb 10, 2026 at 9:02AM; 5; Some notes" }
+  // 3) Plain text body: "Feb 10, 2026 at 9:02AM; 5; Some notes"
+  // 4) Form: raw=date;mood;notes
+  // 5) JSON: { "mood": 5, "notes": "Some notes", "date": "Feb 10, 2026 at 9:02AM" }
   let parsed:
     | {
         recorded_at: Date;
@@ -43,7 +43,14 @@ export async function POST(req: NextRequest) {
       }
     | null = null;
 
-  if (contentType.includes("application/json")) {
+  // Query fallback: ?raw=... — always a plain string, works when body serialization fails
+  const rawFromQuery = req.nextUrl.searchParams.get("raw");
+  if (rawFromQuery?.trim()) {
+    const fromRaw = parseSemicolonLine(rawFromQuery);
+    if (fromRaw) parsed = fromRaw;
+  }
+
+  if (!parsed && contentType.includes("application/json")) {
     const body = await req.json();
     console.log("[checkin] JSON body", body);
     if (body.raw !== undefined && body.raw !== null) {
@@ -125,7 +132,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-  } else if (contentType.includes("text/plain")) {
+  } else if (!parsed && contentType.includes("text/plain")) {
     const raw = await req.text();
     console.log("[checkin] text/plain body", raw);
     const fromRaw = parseSemicolonLine(raw);
@@ -137,28 +144,36 @@ export async function POST(req: NextRequest) {
     }
     parsed = fromRaw;
   } else if (
-    contentType.includes("application/x-www-form-urlencoded") ||
-    contentType.includes("multipart/form-data")
+    !parsed &&
+    (contentType.includes("application/x-www-form-urlencoded") ||
+      contentType.includes("multipart/form-data"))
   ) {
-    // Form body: Shortcuts "Form" option serializes text correctly.
-    const formData = await req.formData();
-    const rawVal = formData.get("raw");
-    const raw = typeof rawVal === "string" ? rawVal : "";
-    const fromRaw = parseSemicolonLine(raw);
-    if (!fromRaw) {
+    try {
+      const formData = await req.formData();
+      const rawVal = formData.get("raw");
+      const raw = typeof rawVal === "string" ? rawVal : "";
+      const fromRaw = parseSemicolonLine(raw);
+      if (fromRaw) parsed = fromRaw;
+      else {
+        return NextResponse.json(
+          {
+            error: "Invalid raw format: expected form field 'raw' with 'date; mood; notes'",
+            debug: { rawLength: raw.length, rawPreview: raw.slice(0, 80) },
+          },
+          { status: 400 }
+        );
+      }
+    } catch (e) {
       return NextResponse.json(
-        {
-          error: "Invalid raw format: expected form field 'raw' with 'date; mood; notes'",
-        },
+        { error: "Form body could not be parsed", debug: String(e) },
         { status: 400 }
       );
     }
-    parsed = fromRaw;
-  } else {
+  } else if (!parsed) {
     return NextResponse.json(
       {
         error:
-          "Content-Type must be application/json, text/plain, or application/x-www-form-urlencoded",
+          "Could not parse check-in. Use ?raw=date;mood;notes in URL, or send JSON/form/text body.",
       },
       { status: 400 }
     );
