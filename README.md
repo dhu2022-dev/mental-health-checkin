@@ -49,39 +49,16 @@ Open [http://localhost:3000](http://localhost:3000). Use the dashboard at `/dash
 
 ## iPhone Shortcut
 
-Your shortcut should send a **POST** request to your app’s check-in URL. You can keep your existing “append to Apple Note” step as a backup.
+### Query string (recommended — most reliable from Shortcuts)
 
-### Option A: JSON body (recommended)
-
-1. In Shortcuts: get **Current Date** and format it (e.g. “Jan 12, 2026 at 9:00 PM”).
-2. Ask for **Number** (mood 1–10) and **Text** (notes, optional).
-3. Add **Get Contents of URL**:
-   - URL: `https://<your-app>.vercel.app/api/checkin`
+1. Build the raw line: get **Current Date** (formatted), **Number** (mood 1–10), **Text** (notes), then concatenate with semicolons: `[Date]; [Mood]; [Notes]` → save as **RawVars**.
+2. **URL Encode** RawVars → save as **RawEncoded**.
+3. **Get Contents of URL**:
+   - URL: `https://<your-app>.vercel.app/api/checkin?raw=` + **RawEncoded**
    - Method: **POST**
-   - Headers: `Content-Type` = `application/json`
-   - If you use `CHECKIN_API_KEY`, add header: `x-api-key` = `YOUR_API_KEY`
-   - Request Body: **JSON**
-   - JSON body (use “Dictionary” and then “Get Dictionary from Input” or build the JSON):
-     - `date` = (formatted current date)
-     - `mood` = (mood number)
-     - `notes` = (notes text)
+   - Request Body: none
 
-To build the JSON in Shortcuts: use **Dictionary** with keys `date`, `mood`, `notes`, then **Get Dictionary from Input** and pass that as the request body (many Shortcuts versions use “Request Body” = “JSON” and then the dictionary).
-
-### Option B: Semicolon-separated (same as your Apple Note line)
-
-If your shortcut already builds a string like:
-
-`Jan 12, 2026 at 9:00PM; 8; Hang out with friends after chapter`
-
-you can send that in the request body:
-
-- **Request Body**: **Text**
-- Text: the string above (date; mood; notes)
-
-Or send as JSON: `{ "raw": "Jan 12, 2026 at 9:00PM; 8; Your notes" }` with `Content-Type: application/json`.
-
-The API will parse it and set the check-in date from the first part.
+Optional: add `x-api-key` header or `?key=...` if you set `CHECKIN_API_KEY`.
 
 ## API
 

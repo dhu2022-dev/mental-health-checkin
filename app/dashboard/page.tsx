@@ -290,13 +290,18 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
+            {checkIns.length > 10 && (
+              <p className="text-stone-500 text-sm mb-3">
+                Showing 10 most recent. Export CSV for full history.
+              </p>
+            )}
             <ul className="space-y-3">
             {checkIns.length === 0 ? (
               <li className="text-stone-500 text-sm">
                 No check-ins in this range. Use your shortcut to add one.
               </li>
             ) : (
-              checkIns.map((c) => (
+              checkIns.slice(0, 10).map((c) => (
                 <li
                   key={c.id}
                   className="flex items-start gap-4 p-3 rounded-lg bg-white border border-stone-200"
