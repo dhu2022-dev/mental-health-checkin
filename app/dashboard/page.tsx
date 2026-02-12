@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { BackgroundWrapper } from "@/components/BackgroundWrapper";
+import { BackgroundSettings } from "@/components/BackgroundSettings";
 import {
   LineChart,
   Line,
@@ -180,8 +182,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 max-w-4xl mx-auto">
-      <header className="flex items-center justify-between mb-8">
+    <BackgroundWrapper contentBlock>
+      <main>
+        <header className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Link
             href="/"
@@ -405,11 +408,14 @@ export default function DashboardPage() {
         </>
       )}
 
-      <footer className="mt-12 pt-6 border-t border-stone-200 text-stone-500 text-sm">
-        <p>
-          Add check-ins from your iPhone shortcut (POST to /api/checkin).
-        </p>
-      </footer>
-    </main>
+        <BackgroundSettings />
+
+        <footer className="mt-8 pt-6 border-t border-stone-200 text-stone-500 text-sm">
+          <p>
+            Add check-ins from your iPhone shortcut (POST to /api/checkin).
+          </p>
+        </footer>
+      </main>
+    </BackgroundWrapper>
   );
 }
