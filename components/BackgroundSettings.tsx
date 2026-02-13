@@ -34,8 +34,13 @@ export function BackgroundSettings() {
           method: "POST",
           body: formData,
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Upload failed");
+        let data: { error?: string };
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error(res.status === 413 ? "File too large" : "Server error");
+        }
+        if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
         setSuccess(true);
         refreshBackgrounds();
       } catch (err) {
@@ -71,7 +76,7 @@ export function BackgroundSettings() {
         Custom background
       </h2>
       <p className="text-stone-600 text-sm mb-3">
-        Upload your own image (e.g. Vagabond fan art). Max 5MB. Stored in Supabase—persists across devices.
+        Upload your own image (e.g. Vagabond fan art). Max 4MB. Stored in Supabase—persists across devices.
       </p>
       <div className="flex flex-wrap gap-2 items-center">
         <label

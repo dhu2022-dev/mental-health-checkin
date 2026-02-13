@@ -3,7 +3,7 @@ import { supabase } from "@/lib/db";
 
 const BUCKET = "backgrounds";
 const SETTINGS_KEY = "custom_background";
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE = 4 * 1024 * 1024; // 4MB (Vercel serverless body limit ~4.5MB)
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function GET() {
@@ -55,19 +55,12 @@ export async function POST(req: NextRequest) {
     const ext = file.name.split(".").pop()?.toLowerCase() || "png";
     const path = `custom.${ext}`;
 
-    // Create bucket if it doesn't exist (ignore BucketAlreadyExists)
-    const { error: bucketErr } = await supabase.storage.createBucket(BUCKET, {
-      public: true,
-      fileSizeLimit: MAX_SIZE,
-      allowedMimeTypes: ALLOWED_TYPES,
-    });
-    if (bucketErr && (bucketErr as { code?: string }).code !== "BucketAlreadyExists") {
-      throw bucketErr;
-    }
+    // Convert to ArrayBuffer for reliable upload in serverless (FormData File can be quirky)
+    const buffer = await file.arrayBuffer();
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
-      .upload(path, file, { upsert: true });
+      .upload(path, buffer, { upsert: true, contentType: file.type });
     if (uploadError) throw uploadError;
 
     const {
@@ -87,7 +80,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: publicUrl });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Upload failed";
+    const err = e as { message?: string; error?: string };
+    const msg = err?.message ?? err?.error ?? "Upload failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
