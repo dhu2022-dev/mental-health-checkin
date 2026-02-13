@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 import { supabase } from "@/lib/db";
 
 const BUCKET = "backgrounds";
+const TARGET_WIDTH = 1920;
+const TARGET_HEIGHT = 1080;
 const SETTINGS_KEY = "custom_background";
 const MAX_SIZE = 4 * 1024 * 1024; // 4MB (Vercel serverless body limit ~4.5MB)
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
-        { error: "File too large (max 5MB)" },
+        { error: "File too large (max 4MB)" },
         { status: 400 }
       );
     }
@@ -52,15 +55,17 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-    const path = `custom.${ext}`;
-
-    // Convert to ArrayBuffer for reliable upload in serverless (FormData File can be quirky)
+    // Crop and resize to consistent 16:9 so backgrounds display uniformly (no random zoom/blur)
     const buffer = await file.arrayBuffer();
+    const processed = await sharp(Buffer.from(buffer))
+      .resize(TARGET_WIDTH, TARGET_HEIGHT, { fit: "cover", position: "center" })
+      .jpeg({ quality: 85 })
+      .toBuffer();
 
+    const path = "custom.jpg";
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
-      .upload(path, buffer, { upsert: true, contentType: file.type });
+      .upload(path, processed, { upsert: true, contentType: "image/jpeg" });
     if (uploadError) throw uploadError;
 
     const {
