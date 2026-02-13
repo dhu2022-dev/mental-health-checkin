@@ -25,23 +25,23 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Full-bleed background - use solid fallback for transparent PNG areas */}
+      {/* Fixed viewport-filling background; gradient filler for widespace when image doesn't reach edges */}
       <div
-        className="absolute inset-0 -z-10"
+        className="fixed inset-0 -z-10 w-screen h-screen"
         style={
           activeBg?.type === "gradient"
             ? { background: activeBg.value }
             : {
-                backgroundColor: activeBg?.type === "image" ? "#1a1a1a" : undefined,
-                backgroundImage: activeBg ? `url(${activeBg.value})` : undefined,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
+                background: activeBg?.type === "image"
+                  ? `url(${activeBg.value}) center/cover no-repeat, linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`
+                  : undefined,
+                backgroundColor: "#1a1816",
               }
         }
       />
       {/* Translucent overlay for readability */}
       <div
-        className="absolute inset-0 -z-10"
+        className="fixed inset-0 -z-10 w-screen h-screen"
         style={{ backgroundColor: `rgba(0, 0, 0, ${overlay})` }}
       />
       {contentBlock ? (

@@ -20,23 +20,21 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden">
-      {/* Full-bleed background */}
+      {/* Fixed viewport-filling background; gradient filler for widespace */}
       <div
-        className="absolute inset-0 -z-10"
+        className="fixed inset-0 -z-10 w-screen h-screen"
         style={
           activeBg.type === "gradient"
             ? { background: activeBg.value }
             : {
-                backgroundColor: "#1a1a1a",
-                backgroundImage: `url(${activeBg.value})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
+                background: `url(${activeBg.value}) center/cover no-repeat, linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`,
+                backgroundColor: "#1a1816",
               }
         }
       />
       {/* Translucent overlay for readability */}
       <div
-        className="absolute inset-0 -z-10"
+        className="fixed inset-0 -z-10 w-screen h-screen"
         style={{ backgroundColor: `rgba(0, 0, 0, ${overlay})` }}
       />
       <h1 className="text-2xl font-semibold text-white mb-4 drop-shadow">
