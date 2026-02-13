@@ -1,41 +1,10 @@
 /**
  * Shared background config for home and dashboard.
- * Structured for future user preference storage.
- * Custom images (upload or URL) stored in localStorage for now.
+ * Custom images are stored in Supabase Storage; URL fetched from /api/background.
  */
 export type HomeBackground =
   | { id: string; type: "gradient"; value: string; overlay?: number }
   | { id: string; type: "image"; value: string; overlay?: number };
-
-const STORAGE_KEY = "mhc_custom_background";
-
-export function getCustomBackground(): HomeBackground | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const { value, overlay } = JSON.parse(raw) as { value: string; overlay?: number };
-    if (typeof value === "string" && value)
-      return { id: "custom", type: "image", value, overlay: overlay ?? 0.35 };
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-export function setCustomBackground(value: string, overlay?: number): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ value, overlay: overlay ?? 0.35 }));
-  } catch {
-    /* ignore */
-  }
-}
-
-export function clearCustomBackground(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(STORAGE_KEY);
-}
 
 export const HOME_BACKGROUNDS: readonly HomeBackground[] = [
   {
@@ -67,9 +36,15 @@ export const HOME_BACKGROUNDS: readonly HomeBackground[] = [
   },
 ] as const;
 
-export function getAllBackgrounds(): HomeBackground[] {
-  const custom = getCustomBackground();
+export function getAllBackgrounds(customUrl: string | null): HomeBackground[] {
   const base = [...HOME_BACKGROUNDS];
-  if (custom) base.push(custom);
+  if (customUrl) {
+    base.push({
+      id: "custom",
+      type: "image",
+      value: customUrl,
+      overlay: 0.35,
+    });
+  }
   return base;
 }

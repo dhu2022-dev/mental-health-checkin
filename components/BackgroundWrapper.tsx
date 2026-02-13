@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllBackgrounds, type HomeBackground } from "@/lib/home-backgrounds";
+import { useAllBackgrounds } from "@/lib/use-backgrounds";
+import type { HomeBackground } from "@/lib/home-backgrounds";
 
 type Props = {
   children: React.ReactNode;
@@ -10,26 +11,28 @@ type Props = {
 };
 
 export function BackgroundWrapper({ children, contentBlock = false }: Props) {
+  const backgrounds = useAllBackgrounds();
   const [bg, setBg] = useState<HomeBackground | null>(null);
 
   useEffect(() => {
-    const all = getAllBackgrounds();
-    const i = Math.floor(Math.random() * all.length);
-    setBg(all[i]);
-  }, []);
+    if (backgrounds.length === 0) return;
+    const i = Math.floor(Math.random() * backgrounds.length);
+    setBg(backgrounds[i]);
+  }, [backgrounds]);
 
-  const activeBg = bg ?? getAllBackgrounds()[0];
+  const activeBg = bg ?? backgrounds[0];
   const overlay = activeBg?.overlay ?? 0.3;
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Full-bleed background */}
+      {/* Full-bleed background - use solid fallback for transparent PNG areas */}
       <div
         className="absolute inset-0 -z-10"
         style={
           activeBg?.type === "gradient"
             ? { background: activeBg.value }
             : {
+                backgroundColor: activeBg?.type === "image" ? "#1a1a1a" : undefined,
                 backgroundImage: activeBg ? `url(${activeBg.value})` : undefined,
                 backgroundSize: "cover",
                 backgroundPosition: "center",

@@ -21,8 +21,9 @@ npm install
 ### 2. Supabase
 
 1. Create a project at [supabase.com](https://supabase.com) (free tier).
-2. In the SQL Editor, run the contents of `supabase/migrations/001_initial.sql` to create `check_ins` and `insights` tables.
+2. In the SQL Editor, run the migrations in order: `001_initial.sql`, then `002_backgrounds.sql` (adds `app_settings` for custom backgrounds).
 3. In Project Settings → API: copy **Project URL** and **service_role** key (keep the latter secret).
+4. (Optional) For custom dashboard backgrounds: in Storage, create a bucket named `backgrounds` (Public ON). The API will create it on first upload if it doesn’t exist.
 
 ### 3. Environment variables
 

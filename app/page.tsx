@@ -2,19 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAllBackgrounds, type HomeBackground } from "@/lib/home-backgrounds";
+import { useAllBackgrounds } from "@/lib/use-backgrounds";
+import type { HomeBackground } from "@/lib/home-backgrounds";
 
 export default function HomePage() {
+  const backgrounds = useAllBackgrounds();
   const [bg, setBg] = useState<HomeBackground | null>(null);
 
   useEffect(() => {
-    const all = getAllBackgrounds();
-    const i = Math.floor(Math.random() * all.length);
-    setBg(all[i]);
-  }, []);
+    if (backgrounds.length === 0) return;
+    const i = Math.floor(Math.random() * backgrounds.length);
+    setBg(backgrounds[i]);
+  }, [backgrounds]);
 
-  const all = getAllBackgrounds();
-  const activeBg = bg ?? all[0];
+  const activeBg = bg ?? backgrounds[0];
   const overlay = activeBg.overlay ?? 0.3;
 
   return (
@@ -26,6 +27,7 @@ export default function HomePage() {
           activeBg.type === "gradient"
             ? { background: activeBg.value }
             : {
+                backgroundColor: "#1a1a1a",
                 backgroundImage: `url(${activeBg.value})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
