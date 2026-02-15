@@ -33,8 +33,8 @@ export default function HomePage() {
   const [phase, setPhase] = useState<Phase | "pending">("pending");
   const reducedMotion = useReducedMotion();
 
-  const goHome = useCallback(() => {
-    if (typeof window !== "undefined") {
+  const goHome = useCallback((fromSkip = false) => {
+    if (fromSkip && typeof window !== "undefined") {
       sessionStorage.setItem(SKIP_STORAGE_KEY, "1");
     }
     setPhase("home");
@@ -45,7 +45,12 @@ export default function HomePage() {
       setPhase("home");
       return;
     }
-    const skipped = sessionStorage.getItem(SKIP_STORAGE_KEY);
+    const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    if (params?.get("intro") === "1") {
+      setPhase("intro");
+      return;
+    }
+    const skipped = typeof window !== "undefined" ? sessionStorage.getItem(SKIP_STORAGE_KEY) : null;
     if (skipped === "1") {
       setPhase("home");
       return;
@@ -65,7 +70,7 @@ export default function HomePage() {
     } else if (phase === "quote") {
       timers.push(setTimeout(() => setPhase("fadeOut"), QUOTE_DURATION_MS));
     } else if (phase === "fadeOut") {
-      timers.push(setTimeout(goHome, FADEOUT_DURATION_MS));
+      timers.push(setTimeout(() => goHome(false), FADEOUT_DURATION_MS));
     }
 
     return () => timers.forEach(clearTimeout);
@@ -156,7 +161,7 @@ export default function HomePage() {
       {/* Skip button */}
       <button
         type="button"
-        onClick={goHome}
+        onClick={() => goHome(true)}
         className="fixed top-4 right-4 px-3 py-1.5 rounded text-sm text-white/80 hover:text-white hover:bg-white/10 transition z-10"
       >
         Skip
