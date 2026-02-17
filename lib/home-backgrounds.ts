@@ -8,24 +8,10 @@ export type HomeBackground =
 
 export const HOME_BACKGROUNDS: readonly HomeBackground[] = [
   {
-    id: "dawn",
-    type: "gradient",
-    value:
-      "linear-gradient(135deg, #fef3e2 0%, #d4a574 50%, #2c1810 100%)",
-    overlay: 0.2,
-  },
-  {
     id: "ink",
     type: "gradient",
     value: "linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)",
     overlay: 0.3,
-  },
-  {
-    id: "mist",
-    type: "gradient",
-    value:
-      "linear-gradient(180deg, #e8e4df 0%, #c4bcb0 50%, #8b7355 100%)",
-    overlay: 0.15,
   },
   {
     id: "zen",

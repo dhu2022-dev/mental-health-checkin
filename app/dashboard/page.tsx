@@ -119,7 +119,10 @@ function downloadCSV(checkIns: CheckIn[]) {
   URL.revokeObjectURL(url);
 }
 
+const DASHBOARD_FADE_MS = 500;
+
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
   const [rangeIndex, setRangeIndex] = useState(1); // 30 days default
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +133,8 @@ export default function DashboardPage() {
   const [generating, setGenerating] = useState(false);
   const [insightError, setInsightError] = useState<string | null>(null);
   const chartData = useChartData(checkIns);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const range = RANGES[rangeIndex];
@@ -182,8 +187,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <BackgroundWrapper contentBlock>
-      <main>
+    <div
+      className="transition-opacity ease-out"
+      style={{
+        opacity: mounted ? 1 : 0,
+        transitionDuration: `${DASHBOARD_FADE_MS}ms`,
+      }}
+    >
+      <BackgroundWrapper contentBlock>
+        <main>
         <header className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Link
@@ -416,6 +428,7 @@ export default function DashboardPage() {
           </p>
         </footer>
       </main>
-    </BackgroundWrapper>
+      </BackgroundWrapper>
+    </div>
   );
 }

@@ -76,7 +76,7 @@ export function BackgroundSettings() {
         Custom background
       </h2>
       <p className="text-stone-600 text-sm mb-3">
-        Upload your own image (e.g. Vagabond fan art). Max 4MB. Images are center-cropped to 16:9 for consistent display. Stored in Supabase—persists across devices.
+        Upload your own image. Max 4MB.
       </p>
       <div className="flex flex-wrap gap-2 items-center">
         <label

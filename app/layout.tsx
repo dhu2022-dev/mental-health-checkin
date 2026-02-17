@@ -13,6 +13,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" href="/faye2.mp4" as="video" />
+      </head>
       <body className="antialiased min-h-screen bg-[#1a1816] text-stone-900">
         {children}
       </body>
