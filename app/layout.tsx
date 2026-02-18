@@ -13,7 +13,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased min-h-screen bg-stone-50 text-stone-900">
+      <head>
+        <link rel="preload" href="/faye2.mp4" as="video" />
+      </head>
+      <body className="antialiased min-h-screen bg-[#1a1816] text-stone-900">
         {children}
       </body>
     </html>

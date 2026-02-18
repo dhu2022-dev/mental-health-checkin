@@ -6,14 +6,16 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:backgrounds": "curl -s -X POST http://localhost:3000/api/background/seed"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "next": "15.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.13.3"
+    "recharts": "^2.13.3",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
