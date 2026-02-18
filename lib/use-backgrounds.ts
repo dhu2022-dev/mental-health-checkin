@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getAllBackgrounds, type HomeBackground } from "@/lib/home-backgrounds";
+import type { HomeBackground } from "@/lib/home-backgrounds";
 
 const REFRESH_EVENT = "mhc-backgrounds-refresh";
 
@@ -11,18 +11,30 @@ export function refreshBackgrounds() {
   }
 }
 
-export function useAllBackgrounds() {
-  const [backgrounds, setBackgrounds] = useState<HomeBackground[]>(
-    () => getAllBackgrounds(null)
-  );
+export function useAllBackgrounds(): {
+  backgrounds: HomeBackground[];
+  hasFetched: boolean;
+} {
+  const [state, setState] = useState<{
+    backgrounds: HomeBackground[];
+    hasFetched: boolean;
+  }>(() => ({
+    backgrounds: [],
+    hasFetched: false,
+  }));
 
   const fetchBackgrounds = useCallback(() => {
     fetch("/api/background")
       .then((r) => r.json())
-      .then((data: { url: string | null }) => {
-        setBackgrounds(getAllBackgrounds(data.url ?? null));
+      .then((data: { backgrounds?: HomeBackground[]; hasFetched?: boolean }) => {
+        setState({
+          backgrounds: data.backgrounds ?? [],
+          hasFetched: data.hasFetched ?? true,
+        });
       })
-      .catch(() => setBackgrounds(getAllBackgrounds(null)));
+      .catch(() => {
+        setState({ backgrounds: [], hasFetched: true });
+      });
   }, []);
 
   useEffect(() => {
@@ -32,5 +44,5 @@ export function useAllBackgrounds() {
     return () => window.removeEventListener(REFRESH_EVENT, handler);
   }, [fetchBackgrounds]);
 
-  return backgrounds;
+  return { backgrounds: state.backgrounds, hasFetched: state.hasFetched };
 }

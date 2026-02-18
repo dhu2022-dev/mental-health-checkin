@@ -6,24 +6,64 @@ const BUCKET = "backgrounds";
 const TARGET_WIDTH = 1920;
 const TARGET_HEIGHT = 1080;
 const SETTINGS_KEY = "custom_background";
+const ZEN_SETTINGS_KEY = "zen_background";
 const MAX_SIZE = 4 * 1024 * 1024; // 4MB (Vercel serverless body limit ~4.5MB)
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+const INK_GRADIENT = {
+  id: "ink",
+  type: "gradient" as const,
+  value: "linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)",
+  overlay: 0.3,
+};
+
 export async function GET() {
   if (!supabase) {
-    return NextResponse.json({ url: null });
+    return NextResponse.json({
+      backgrounds: [INK_GRADIENT],
+      hasFetched: true,
+    });
   }
   try {
-    const { data, error } = await supabase
+    const { data: rows } = await supabase
       .from("app_settings")
-      .select("value")
-      .eq("key", SETTINGS_KEY)
-      .maybeSingle();
-    if (error) throw error;
-    const url = (data?.value as { url?: string } | null)?.url ?? null;
-    return NextResponse.json({ url });
+      .select("key, value")
+      .in("key", [SETTINGS_KEY, ZEN_SETTINGS_KEY]);
+
+    const byKey = new Map((rows ?? []).map((r) => [r.key, r.value]));
+    const customUrl = (byKey.get(SETTINGS_KEY) as { url?: string } | null)?.url ?? null;
+    const zenUrl = (byKey.get(ZEN_SETTINGS_KEY) as { url?: string } | null)?.url ?? null;
+
+    const backgrounds = [
+      INK_GRADIENT,
+      ...(zenUrl
+        ? [
+            {
+              id: "zen",
+              type: "image" as const,
+              value: zenUrl,
+              overlay: 0.4,
+            },
+          ]
+        : []),
+      ...(customUrl
+        ? [
+            {
+              id: "custom",
+              type: "image" as const,
+              value: customUrl,
+              overlay: 0.35,
+            },
+          ]
+        : []),
+    ];
+
+    return NextResponse.json({ backgrounds, hasFetched: true });
   } catch {
-    return NextResponse.json({ url: null });
+    return NextResponse.json({
+      backgrounds: [INK_GRADIENT],
+      hasFetched: true,
+    });
   }
 }
 

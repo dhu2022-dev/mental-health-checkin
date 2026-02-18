@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAllBackgrounds } from "@/lib/use-backgrounds";
-import type { HomeBackground } from "@/lib/home-backgrounds";
+import { INK_PLACEHOLDER, type HomeBackground } from "@/lib/home-backgrounds";
 
 type Props = {
   children: React.ReactNode;
@@ -11,16 +11,32 @@ type Props = {
 };
 
 export function BackgroundWrapper({ children, contentBlock = false }: Props) {
-  const backgrounds = useAllBackgrounds();
+  const { backgrounds, hasFetched } = useAllBackgrounds();
   const [bg, setBg] = useState<HomeBackground | null>(null);
+  const hadCustomRef = useRef(false);
 
   useEffect(() => {
-    if (backgrounds.length === 0) return;
+    if (!hasFetched || backgrounds.length === 0) return;
+    const hasCustom = backgrounds.some((b) => b.id === "custom");
+    const customJustAdded = hasCustom && !hadCustomRef.current;
+    hadCustomRef.current = hasCustom;
+
+    const currentStillInList = bg && backgrounds.some((b) => b.id === bg.id);
+    if (currentStillInList) {
+      if (customJustAdded) {
+        const customBg = backgrounds.find((b) => b.id === "custom");
+        if (customBg) setBg(customBg);
+      }
+      return;
+    }
     const i = Math.floor(Math.random() * backgrounds.length);
     setBg(backgrounds[i]);
-  }, [backgrounds]);
+  }, [backgrounds, hasFetched, bg]);
 
-  const activeBg = bg ?? backgrounds[0];
+  const activeBg =
+    bg ??
+    (hasFetched && backgrounds.length > 0 ? backgrounds[0] : INK_PLACEHOLDER) ??
+    INK_PLACEHOLDER;
   const overlay = activeBg?.overlay ?? 0.3;
 
   return (
@@ -30,13 +46,19 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
         className="fixed inset-0 -z-10 w-screen h-screen"
         style={
           activeBg?.type === "gradient"
-            ? { background: activeBg.value }
-            : {
-                background: activeBg?.type === "image"
-                  ? `url(${activeBg.value}) center/cover no-repeat, linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`
-                  : undefined,
+            ? {
+                backgroundImage: activeBg.value,
                 backgroundColor: "#1a1816",
               }
+            : activeBg?.type === "image"
+              ? {
+                  backgroundImage: `url(${activeBg.value}), linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`,
+                  backgroundSize: "cover, cover",
+                  backgroundPosition: "center, center",
+                  backgroundRepeat: "no-repeat, no-repeat",
+                  backgroundColor: "#1a1816",
+                }
+              : { backgroundColor: "#1a1816" }
         }
       />
       {/* Translucent overlay for readability */}

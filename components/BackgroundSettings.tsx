@@ -5,21 +5,23 @@ import { refreshBackgrounds } from "@/lib/use-backgrounds";
 
 export function BackgroundSettings() {
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [successType, setSuccessType] = useState<"upload" | "remove" | null>(null);
   const [hasCustom, setHasCustom] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/background")
       .then((r) => r.json())
-      .then((data: { url: string | null }) => setHasCustom(!!data.url))
+      .then((data: { backgrounds?: { id: string }[] }) =>
+        setHasCustom(data.backgrounds?.some((b) => b.id === "custom") ?? false)
+      )
       .catch(() => {});
-  }, [success]);
+  }, [successType]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       setError(null);
-      setSuccess(false);
+      setSuccessType(null);
       const file = e.target.files?.[0];
       if (!file) return;
       if (!file.type.startsWith("image/")) {
@@ -41,7 +43,7 @@ export function BackgroundSettings() {
           throw new Error(res.status === 413 ? "File too large" : "Server error");
         }
         if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
-        setSuccess(true);
+        setSuccessType("upload");
         refreshBackgrounds();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
@@ -55,12 +57,12 @@ export function BackgroundSettings() {
 
   const handleClear = useCallback(async () => {
     setError(null);
-    setSuccess(false);
+    setSuccessType(null);
     setLoading(true);
     try {
       const res = await fetch("/api/background", { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-      setSuccess(true);
+      setSuccessType("remove");
       setHasCustom(false);
       refreshBackgrounds();
     } catch {
@@ -107,9 +109,14 @@ export function BackgroundSettings() {
         )}
       </div>
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
-      {success && (
+      {successType === "upload" && (
         <p className="text-emerald-600 text-sm mt-2">
           Background saved. It will appear in the rotation.
+        </p>
+      )}
+      {successType === "remove" && (
+        <p className="text-emerald-600 text-sm mt-2">
+          Custom background removed.
         </p>
       )}
     </section>

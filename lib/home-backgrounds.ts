@@ -1,36 +1,15 @@
 /**
- * Shared background config for home and dashboard.
- * Custom images are stored in Supabase Storage; URL fetched from /api/background.
+ * Background types. All backgrounds are now fetched from /api/background (DB).
+ * This module only exports the type and a fallback for loading state.
  */
 export type HomeBackground =
   | { id: string; type: "gradient"; value: string; overlay?: number }
   | { id: string; type: "image"; value: string; overlay?: number };
 
-export const HOME_BACKGROUNDS: readonly HomeBackground[] = [
-  {
-    id: "ink",
-    type: "gradient",
-    value: "linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)",
-    overlay: 0.3,
-  },
-  {
-    id: "zen",
-    type: "image",
-    value:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80",
-    overlay: 0.4,
-  },
-] as const;
-
-export function getAllBackgrounds(customUrl: string | null): HomeBackground[] {
-  const base = [...HOME_BACKGROUNDS];
-  if (customUrl) {
-    base.push({
-      id: "custom",
-      type: "image",
-      value: customUrl,
-      overlay: 0.35,
-    });
-  }
-  return base;
-}
+/** Fallback during loading (ink gradient) - matches API default */
+export const INK_PLACEHOLDER: HomeBackground = {
+  id: "ink",
+  type: "gradient",
+  value: "linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)",
+  overlay: 0.3,
+};

@@ -34,12 +34,6 @@ const RANGES = [
   { label: "All time", days: null },
 ] as const;
 
-const INSIGHT_PERIODS = [
-  { label: "Last 30 days", value: "monthly" },
-  { label: "Last quarter", value: "quarterly" },
-  { label: "Last year", value: "yearly" },
-] as const;
-
 function toISODate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -123,13 +117,12 @@ const DASHBOARD_FADE_MS = 500;
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const [rangeIndex, setRangeIndex] = useState(1); // 30 days default
+  const [rangeIndex, setRangeIndex] = useState(0); // 7 days default
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
-  const [insightPeriod, setInsightPeriod] = useState<"monthly" | "quarterly" | "yearly">("monthly");
   const [generating, setGenerating] = useState(false);
   const [insightError, setInsightError] = useState<string | null>(null);
   const chartData = useChartData(checkIns);
@@ -168,12 +161,32 @@ export default function DashboardPage() {
   }, []);
 
   function generateInsights() {
+    const range = RANGES[rangeIndex];
+    const now = new Date();
+    const to = now;
+    const from = range.days
+      ? new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000)
+      : new Date(2000, 0, 1);
+    const startDate = toISODate(from);
+    const endDate = toISODate(to);
+    const periodType =
+      range.days === 7
+        ? "weekly"
+        : range.days === 30
+          ? "monthly"
+          : range.days === 90
+            ? "quarterly"
+            : "all";
     setGenerating(true);
     setInsightError(null);
     fetch("/api/insights", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ periodType: insightPeriod }),
+      body: JSON.stringify({
+        startDate,
+        endDate,
+        periodType,
+      }),
     })
       .then((r) => {
         if (!r.ok) return r.json().then((d) => Promise.reject(new Error(d.error ?? "Failed")));
@@ -349,19 +362,6 @@ export default function DashboardPage() {
               Use AI to summarize a period and surface positive and negative factors from your notes.
             </p>
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              {INSIGHT_PERIODS.map((p) => (
-                <button
-                  key={p.value}
-                  onClick={() => setInsightPeriod(p.value as "monthly" | "quarterly" | "yearly")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    insightPeriod === p.value
-                      ? "bg-stone-800 text-white"
-                      : "bg-stone-200 text-stone-700 hover:bg-stone-300"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
               <button
                 type="button"
                 onClick={generateInsights}
@@ -378,7 +378,7 @@ export default function DashboardPage() {
               <p className="text-stone-500 text-sm">Loading insights…</p>
             ) : insights.length === 0 ? (
               <p className="text-stone-500 text-sm">
-                No insights yet. Generate one for the last 30 days, quarter, or year.
+                No insights yet. Generate one for the selected date range.
               </p>
             ) : (
               <ul className="space-y-4">
@@ -389,7 +389,8 @@ export default function DashboardPage() {
                   >
                     <div className="text-stone-500 text-sm mb-2">
                       {i.period_start} – {i.period_end}
-                      {i.period_type !== "monthly" && ` (${i.period_type})`}
+                      {!["monthly", "quarterly", "yearly"].includes(i.period_type) &&
+                        ` (${i.period_type})`}
                     </div>
                     {i.summary && (
                       <p className="text-stone-700 text-sm mb-3">{i.summary}</p>
