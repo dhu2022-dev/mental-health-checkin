@@ -3,20 +3,29 @@
 import { useState, useCallback, useEffect } from "react";
 import { refreshBackgrounds } from "@/lib/use-backgrounds";
 
+type CustomBg = { id: string; value: string };
+
 export function BackgroundSettings() {
   const [error, setError] = useState<string | null>(null);
   const [successType, setSuccessType] = useState<"upload" | "remove" | null>(null);
-  const [hasCustom, setHasCustom] = useState(false);
+  const [customBackgrounds, setCustomBackgrounds] = useState<CustomBg[]>([]);
   const [loading, setLoading] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchCustom = useCallback(() => {
     fetch("/api/background")
       .then((r) => r.json())
-      .then((data: { backgrounds?: { id: string }[] }) =>
-        setHasCustom(data.backgrounds?.some((b) => b.id === "custom") ?? false)
-      )
+      .then((data: { backgrounds?: { id: string; value: string }[] }) => {
+        const custom =
+          data.backgrounds?.filter((b) => b.id.startsWith("custom_")) ?? [];
+        setCustomBackgrounds(custom);
+      })
       .catch(() => {});
-  }, [successType]);
+  }, []);
+
+  useEffect(() => {
+    fetchCustom();
+  }, [fetchCustom, successType]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,20 +64,24 @@ export function BackgroundSettings() {
     []
   );
 
-  const handleClear = useCallback(async () => {
+  const handleRemove = useCallback(async (clientId: string) => {
+    const uuid = clientId.startsWith("custom_") ? clientId.slice(7) : clientId;
+    if (!uuid) return;
     setError(null);
     setSuccessType(null);
-    setLoading(true);
+    setRemovingId(clientId);
     try {
-      const res = await fetch("/api/background", { method: "DELETE" });
+      const res = await fetch(`/api/background?id=${encodeURIComponent(uuid)}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Delete failed");
       setSuccessType("remove");
-      setHasCustom(false);
+      setCustomBackgrounds((prev) => prev.filter((b) => b.id !== clientId));
       refreshBackgrounds();
     } catch {
       setError("Failed to remove background");
     } finally {
-      setLoading(false);
+      setRemovingId(null);
     }
   }, []);
 
@@ -97,17 +110,33 @@ export function BackgroundSettings() {
             className="hidden"
           />
         </label>
-        {hasCustom && (
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={loading}
-            className="px-4 py-2 rounded-lg border border-stone-300 text-stone-600 text-sm hover:bg-stone-100 disabled:opacity-50 transition"
-          >
-            Remove custom
-          </button>
-        )}
       </div>
+      {customBackgrounds.length > 0 && (
+        <ul className="mt-4 space-y-2">
+          {customBackgrounds.map((bg) => (
+            <li
+              key={bg.id}
+              className="flex items-center gap-3 p-3 rounded-lg bg-stone-50 border border-stone-200"
+            >
+              <div
+                className="w-16 h-10 rounded bg-stone-200 bg-cover bg-center flex-shrink-0"
+                style={{ backgroundImage: `url(${bg.value})` }}
+              />
+              <span className="text-stone-600 text-sm flex-1 truncate">
+                Custom image
+              </span>
+              <button
+                type="button"
+                onClick={() => handleRemove(bg.id)}
+                disabled={loading || removingId === bg.id}
+                className="px-3 py-1 rounded text-sm text-stone-600 hover:bg-stone-200 disabled:opacity-50 transition"
+              >
+                {removingId === bg.id ? "Removing…" : "Remove"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
       {successType === "upload" && (
         <p className="text-emerald-600 text-sm mt-2">
@@ -116,7 +145,7 @@ export function BackgroundSettings() {
       )}
       {successType === "remove" && (
         <p className="text-emerald-600 text-sm mt-2">
-          Custom background removed.
+          Background removed.
         </p>
       )}
     </section>

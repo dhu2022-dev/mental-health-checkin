@@ -17,14 +17,14 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
 
   useEffect(() => {
     if (!hasFetched || backgrounds.length === 0) return;
-    const hasCustom = backgrounds.some((b) => b.id === "custom");
+    const hasCustom = backgrounds.some((b) => b.id.startsWith("custom_"));
     const customJustAdded = hasCustom && !hadCustomRef.current;
     hadCustomRef.current = hasCustom;
 
     const currentStillInList = bg && backgrounds.some((b) => b.id === bg.id);
     if (currentStillInList) {
       if (customJustAdded) {
-        const customBg = backgrounds.find((b) => b.id === "custom");
+        const customBg = backgrounds.find((b) => b.id.startsWith("custom_"));
         if (customBg) setBg(customBg);
       }
       return;
