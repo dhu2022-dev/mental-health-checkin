@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { refreshBackgrounds } from "@/lib/use-backgrounds";
+import { useBackgroundContext } from "@/lib/background-context";
 
 type CustomBg = { id: string; value: string; displayName?: string | null };
 
 const DISPLAY_LIMIT = 3;
 
 export function BackgroundSettings() {
+  const bgContext = useBackgroundContext();
   const [error, setError] = useState<string | null>(null);
   const [successType, setSuccessType] = useState<"upload" | "remove" | null>(null);
   const [customBackgrounds, setCustomBackgrounds] = useState<CustomBg[]>([]);
@@ -117,28 +119,65 @@ export function BackgroundSettings() {
       {customBackgrounds.length > 0 && (
         <div className="mt-4">
           <ul className="space-y-2">
-            {(showAll ? customBackgrounds : customBackgrounds.slice(0, DISPLAY_LIMIT)).map((bg) => (
-              <li
-                key={bg.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-stone-50 border border-stone-200"
-              >
-                <div
-                  className="w-16 h-10 rounded bg-stone-200 bg-cover bg-center flex-shrink-0"
-                  style={{ backgroundImage: `url(${bg.value})` }}
-                />
-                <span className="text-stone-600 text-sm flex-1 truncate">
-                  {bg.displayName || "Custom image"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(bg.id)}
-                  disabled={loading || removingId === bg.id}
-                  className="px-3 py-1 rounded text-sm text-stone-600 hover:bg-stone-200 disabled:opacity-50 transition"
+            {(showAll ? customBackgrounds : customBackgrounds.slice(0, DISPLAY_LIMIT)).map((bg) => {
+              const isSelected = bgContext?.currentBgId === bg.id;
+              const setBg = () =>
+                bgContext?.setBackground({
+                  id: bg.id,
+                  type: "image",
+                  value: bg.value,
+                  overlay: 0.35,
+                });
+              return (
+                <li
+                  key={bg.id}
+                  {...(bgContext && {
+                    role: "button",
+                    tabIndex: 0,
+                    onClick: setBg,
+                    onKeyDown: (e: React.KeyboardEvent) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setBg();
+                      }
+                    },
+                  })}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition ${
+                    bgContext
+                      ? "cursor-pointer hover:bg-stone-100"
+                      : ""
+                  } ${
+                    isSelected
+                      ? "bg-stone-100 border-stone-400 ring-1 ring-stone-300"
+                      : "bg-stone-50 border-stone-200"
+                  }`}
                 >
-                  {removingId === bg.id ? "Removing…" : "Remove"}
-                </button>
-              </li>
-            ))}
+                  <div
+                    className="w-16 h-10 rounded bg-stone-200 bg-cover bg-center flex-shrink-0"
+                    style={{ backgroundImage: `url(${bg.value})` }}
+                  />
+                  <span className="text-stone-600 text-sm flex-1 truncate">
+                    {bg.displayName || "Custom image"}
+                  </span>
+                  {isSelected && (
+                    <span className="text-stone-500 text-xs" aria-hidden>
+                      Selected
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(bg.id);
+                    }}
+                    disabled={loading || removingId === bg.id}
+                    className="px-3 py-1 rounded text-sm text-stone-600 hover:bg-stone-200 disabled:opacity-50 transition"
+                  >
+                    {removingId === bg.id ? "Removing…" : "Remove"}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
           {customBackgrounds.length > DISPLAY_LIMIT && (
             <button
