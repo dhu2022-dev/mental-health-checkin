@@ -3,7 +3,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { refreshBackgrounds } from "@/lib/use-backgrounds";
 
-type CustomBg = { id: string; value: string };
+type CustomBg = { id: string; value: string; displayName?: string | null };
+
+const DISPLAY_LIMIT = 3;
 
 export function BackgroundSettings() {
   const [error, setError] = useState<string | null>(null);
@@ -11,11 +13,12 @@ export function BackgroundSettings() {
   const [customBackgrounds, setCustomBackgrounds] = useState<CustomBg[]>([]);
   const [loading, setLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const fetchCustom = useCallback(() => {
     fetch("/api/background")
       .then((r) => r.json())
-      .then((data: { backgrounds?: { id: string; value: string }[] }) => {
+        .then((data: { backgrounds?: { id: string; value: string; displayName?: string | null }[] }) => {
         const custom =
           data.backgrounds?.filter((b) => b.id.startsWith("custom_")) ?? [];
         setCustomBackgrounds(custom);
@@ -112,30 +115,41 @@ export function BackgroundSettings() {
         </label>
       </div>
       {customBackgrounds.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          {customBackgrounds.map((bg) => (
-            <li
-              key={bg.id}
-              className="flex items-center gap-3 p-3 rounded-lg bg-stone-50 border border-stone-200"
-            >
-              <div
-                className="w-16 h-10 rounded bg-stone-200 bg-cover bg-center flex-shrink-0"
-                style={{ backgroundImage: `url(${bg.value})` }}
-              />
-              <span className="text-stone-600 text-sm flex-1 truncate">
-                Custom image
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemove(bg.id)}
-                disabled={loading || removingId === bg.id}
-                className="px-3 py-1 rounded text-sm text-stone-600 hover:bg-stone-200 disabled:opacity-50 transition"
+        <div className="mt-4">
+          <ul className="space-y-2">
+            {(showAll ? customBackgrounds : customBackgrounds.slice(0, DISPLAY_LIMIT)).map((bg) => (
+              <li
+                key={bg.id}
+                className="flex items-center gap-3 p-3 rounded-lg bg-stone-50 border border-stone-200"
               >
-                {removingId === bg.id ? "Removing…" : "Remove"}
-              </button>
-            </li>
-          ))}
-        </ul>
+                <div
+                  className="w-16 h-10 rounded bg-stone-200 bg-cover bg-center flex-shrink-0"
+                  style={{ backgroundImage: `url(${bg.value})` }}
+                />
+                <span className="text-stone-600 text-sm flex-1 truncate">
+                  {bg.displayName || "Custom image"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(bg.id)}
+                  disabled={loading || removingId === bg.id}
+                  className="px-3 py-1 rounded text-sm text-stone-600 hover:bg-stone-200 disabled:opacity-50 transition"
+                >
+                  {removingId === bg.id ? "Removing…" : "Remove"}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {customBackgrounds.length > DISPLAY_LIMIT && (
+            <button
+              type="button"
+              onClick={() => setShowAll((prev) => !prev)}
+              className="mt-2 text-sm text-stone-500 hover:text-stone-700 transition"
+            >
+              {showAll ? "Show less" : `View all (${customBackgrounds.length})`}
+            </button>
+          )}
+        </div>
       )}
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
       {successType === "upload" && (

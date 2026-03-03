@@ -10,17 +10,10 @@ const ZEN_SETTINGS_KEY = "zen_background";
 const MAX_SIZE = 4 * 1024 * 1024; // 4MB (Vercel serverless body limit ~4.5MB)
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-const INK_GRADIENT = {
-  id: "ink",
-  type: "gradient" as const,
-  value: "linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)",
-  overlay: 0.3,
-};
-
 export async function GET() {
   if (!supabase) {
     return NextResponse.json({
-      backgrounds: [INK_GRADIENT],
+      backgrounds: [],
       hasFetched: true,
     });
   }
@@ -32,7 +25,7 @@ export async function GET() {
         .eq("key", ZEN_SETTINGS_KEY),
       supabase
         .from("background_images")
-        .select("id, storage_path")
+        .select("id, storage_path, display_name")
         .order("created_at", { ascending: false }),
     ]);
 
@@ -46,11 +39,11 @@ export async function GET() {
         type: "image" as const,
         value: publicUrl,
         overlay: 0.35,
+        displayName: row.display_name ?? null,
       };
     });
 
     const backgrounds = [
-      INK_GRADIENT,
       ...(zenUrl
         ? [
             {
@@ -67,7 +60,7 @@ export async function GET() {
     return NextResponse.json({ backgrounds, hasFetched: true });
   } catch {
     return NextResponse.json({
-      backgrounds: [INK_GRADIENT],
+      backgrounds: [],
       hasFetched: true,
     });
   }
@@ -108,6 +101,7 @@ export async function POST(req: NextRequest) {
       .toBuffer();
 
     const path = `custom_${randomUUID().slice(0, 8)}.jpg`;
+    const displayName = file.name.replace(/\.[^/.]+$/, "").trim() || null;
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(path, processed, { upsert: true, contentType: "image/jpeg" });
@@ -119,7 +113,7 @@ export async function POST(req: NextRequest) {
 
     const { data: row, error: insertError } = await supabase
       .from("background_images")
-      .insert({ storage_path: path })
+      .insert({ storage_path: path, display_name: displayName })
       .select("id")
       .single();
     if (insertError) throw insertError;
