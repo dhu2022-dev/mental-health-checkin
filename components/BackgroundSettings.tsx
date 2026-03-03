@@ -2,21 +2,35 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { refreshBackgrounds } from "@/lib/use-backgrounds";
+import { useBackgroundContext } from "@/lib/background-context";
+
+type CustomBg = { id: string; value: string; displayName?: string | null };
+
+const DISPLAY_LIMIT = 3;
 
 export function BackgroundSettings() {
+  const bgContext = useBackgroundContext();
   const [error, setError] = useState<string | null>(null);
   const [successType, setSuccessType] = useState<"upload" | "remove" | null>(null);
-  const [hasCustom, setHasCustom] = useState(false);
+  const [customBackgrounds, setCustomBackgrounds] = useState<CustomBg[]>([]);
   const [loading, setLoading] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
-  useEffect(() => {
+  const fetchCustom = useCallback(() => {
     fetch("/api/background")
       .then((r) => r.json())
-      .then((data: { backgrounds?: { id: string }[] }) =>
-        setHasCustom(data.backgrounds?.some((b) => b.id === "custom") ?? false)
-      )
+        .then((data: { backgrounds?: { id: string; value: string; displayName?: string | null }[] }) => {
+        const custom =
+          data.backgrounds?.filter((b) => b.id.startsWith("custom_")) ?? [];
+        setCustomBackgrounds(custom);
+      })
       .catch(() => {});
-  }, [successType]);
+  }, []);
+
+  useEffect(() => {
+    fetchCustom();
+  }, [fetchCustom, successType]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,20 +69,24 @@ export function BackgroundSettings() {
     []
   );
 
-  const handleClear = useCallback(async () => {
+  const handleRemove = useCallback(async (clientId: string) => {
+    const uuid = clientId.startsWith("custom_") ? clientId.slice(7) : clientId;
+    if (!uuid) return;
     setError(null);
     setSuccessType(null);
-    setLoading(true);
+    setRemovingId(clientId);
     try {
-      const res = await fetch("/api/background", { method: "DELETE" });
+      const res = await fetch(`/api/background?id=${encodeURIComponent(uuid)}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Delete failed");
       setSuccessType("remove");
-      setHasCustom(false);
+      setCustomBackgrounds((prev) => prev.filter((b) => b.id !== clientId));
       refreshBackgrounds();
     } catch {
       setError("Failed to remove background");
     } finally {
-      setLoading(false);
+      setRemovingId(null);
     }
   }, []);
 
@@ -97,17 +115,81 @@ export function BackgroundSettings() {
             className="hidden"
           />
         </label>
-        {hasCustom && (
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={loading}
-            className="px-4 py-2 rounded-lg border border-stone-300 text-stone-600 text-sm hover:bg-stone-100 disabled:opacity-50 transition"
-          >
-            Remove custom
-          </button>
-        )}
       </div>
+      {customBackgrounds.length > 0 && (
+        <div className="mt-4">
+          <ul className="space-y-2">
+            {(showAll ? customBackgrounds : customBackgrounds.slice(0, DISPLAY_LIMIT)).map((bg) => {
+              const isSelected = bgContext?.currentBgId === bg.id;
+              const setBg = () =>
+                bgContext?.setBackground({
+                  id: bg.id,
+                  type: "image",
+                  value: bg.value,
+                  overlay: 0.35,
+                });
+              return (
+                <li
+                  key={bg.id}
+                  {...(bgContext && {
+                    role: "button",
+                    tabIndex: 0,
+                    onClick: setBg,
+                    onKeyDown: (e: React.KeyboardEvent) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setBg();
+                      }
+                    },
+                  })}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition ${
+                    bgContext
+                      ? "cursor-pointer hover:bg-stone-100"
+                      : ""
+                  } ${
+                    isSelected
+                      ? "bg-stone-100 border-stone-400 ring-1 ring-stone-300"
+                      : "bg-stone-50 border-stone-200"
+                  }`}
+                >
+                  <div
+                    className="w-16 h-10 rounded bg-stone-200 bg-cover bg-center flex-shrink-0"
+                    style={{ backgroundImage: `url(${bg.value})` }}
+                  />
+                  <span className="text-stone-600 text-sm flex-1 truncate">
+                    {bg.displayName || "Custom image"}
+                  </span>
+                  {isSelected && (
+                    <span className="text-stone-500 text-xs" aria-hidden>
+                      Selected
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(bg.id);
+                    }}
+                    disabled={loading || removingId === bg.id}
+                    className="px-3 py-1 rounded text-sm text-stone-600 hover:bg-stone-200 disabled:opacity-50 transition"
+                  >
+                    {removingId === bg.id ? "Removing…" : "Remove"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {customBackgrounds.length > DISPLAY_LIMIT && (
+            <button
+              type="button"
+              onClick={() => setShowAll((prev) => !prev)}
+              className="mt-2 text-sm text-stone-500 hover:text-stone-700 transition"
+            >
+              {showAll ? "Show less" : `View all (${customBackgrounds.length})`}
+            </button>
+          )}
+        </div>
+      )}
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
       {successType === "upload" && (
         <p className="text-emerald-600 text-sm mt-2">
@@ -116,7 +198,7 @@ export function BackgroundSettings() {
       )}
       {successType === "remove" && (
         <p className="text-emerald-600 text-sm mt-2">
-          Custom background removed.
+          Background removed.
         </p>
       )}
     </section>

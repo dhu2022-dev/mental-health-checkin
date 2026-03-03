@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useAllBackgrounds } from "@/lib/use-backgrounds";
 import { INK_PLACEHOLDER, type HomeBackground } from "@/lib/home-backgrounds";
+import { BackgroundProvider } from "@/lib/background-context";
 
 type Props = {
   children: React.ReactNode;
@@ -13,19 +14,24 @@ type Props = {
 export function BackgroundWrapper({ children, contentBlock = false }: Props) {
   const { backgrounds, hasFetched } = useAllBackgrounds();
   const [bg, setBg] = useState<HomeBackground | null>(null);
-  const hadCustomRef = useRef(false);
+  const prevCustomCountRef = useRef(0);
+
+  const contextValue = {
+    currentBgId: bg?.id ?? null,
+    setBackground: setBg,
+  };
 
   useEffect(() => {
     if (!hasFetched || backgrounds.length === 0) return;
-    const hasCustom = backgrounds.some((b) => b.id === "custom");
-    const customJustAdded = hasCustom && !hadCustomRef.current;
-    hadCustomRef.current = hasCustom;
+    const customBackgrounds = backgrounds.filter((b) => b.id.startsWith("custom_"));
+    const customCount = customBackgrounds.length;
+    const customJustAdded = customCount > prevCustomCountRef.current;
+    prevCustomCountRef.current = customCount;
 
     const currentStillInList = bg && backgrounds.some((b) => b.id === bg.id);
     if (currentStillInList) {
-      if (customJustAdded) {
-        const customBg = backgrounds.find((b) => b.id === "custom");
-        if (customBg) setBg(customBg);
+      if (customJustAdded && customBackgrounds.length > 0) {
+        setBg(customBackgrounds[0]);
       }
       return;
     }
@@ -40,6 +46,7 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
   const overlay = activeBg?.overlay ?? 0.3;
 
   return (
+    <BackgroundProvider value={contextValue}>
     <div className="min-h-screen relative overflow-hidden">
       {/* Fixed viewport-filling background; gradient filler for widespace when image doesn't reach edges */}
       <div
@@ -78,5 +85,6 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
         children
       )}
     </div>
+    </BackgroundProvider>
   );
 }
