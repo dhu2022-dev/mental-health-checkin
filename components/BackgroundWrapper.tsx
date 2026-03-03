@@ -41,20 +41,34 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
 
   useEffect(() => {
     if (!hasFetched || backgrounds.length === 0) return;
-    const customBackgrounds = backgrounds.filter((b) => b.id.startsWith("custom_"));
-    const customCount = customBackgrounds.length;
-    const customJustAdded = customCount > prevCustomCountRef.current;
-    prevCustomCountRef.current = customCount;
 
-    const currentStillInList = bg && backgrounds.some((b) => b.id === bg.id);
-    if (currentStillInList) {
-      if (customJustAdded && customBackgrounds.length > 0) {
-        setBg(customBackgrounds[0]);
-      }
+    const customBackgrounds = backgrounds.filter((b) => b.id.startsWith("custom_"));
+    const prevCount = prevCustomCountRef.current;
+    prevCustomCountRef.current = customBackgrounds.length;
+    const customJustAdded = customBackgrounds.length > prevCount;
+
+    const currentInList = bg && backgrounds.some((b) => b.id === bg.id);
+
+    // Upload: use newest (first user-uploaded; zen is excluded via overlay)
+    if (customJustAdded && customBackgrounds.length > 0) {
+      const newest = customBackgrounds.find((b) => b.overlay === 0.35) ?? customBackgrounds[0];
+      setBg(newest);
       return;
     }
-    const i = Math.floor(Math.random() * backgrounds.length);
-    setBg(backgrounds[i]);
+
+    // Removed: current no longer in list → pick random
+    if (bg && !currentInList) {
+      const i = Math.floor(Math.random() * backgrounds.length);
+      setBg(backgrounds[i]);
+      return;
+    }
+
+    // Initial load: no selection yet → pick random
+    if (!bg) {
+      const i = Math.floor(Math.random() * backgrounds.length);
+      setBg(backgrounds[i]);
+    }
+    // User selected from gallery: keep current (handled by setBackground in context)
   }, [backgrounds, hasFetched, bg]);
 
   const activeBg = bg ?? INK_PLACEHOLDER;
@@ -63,15 +77,42 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
   const [fromBg, setFromBg] = useState(activeBg);
   const [toBg, setToBg] = useState(activeBg);
   const [isFading, setIsFading] = useState(false);
+  const activeBgRef = useRef(activeBg);
+  activeBgRef.current = activeBg;
 
   useEffect(() => {
     if (activeBg.id === toBg.id) return;
-    setFromBg(toBg);
-    setToBg(activeBg);
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setIsFading(true));
-    });
-    return () => cancelAnimationFrame(raf);
+
+    const runTransition = () => {
+      setFromBg(toBg);
+      setToBg(activeBg);
+      let innerRaf = 0;
+      const outerRaf = requestAnimationFrame(() => {
+        innerRaf = requestAnimationFrame(() => setIsFading(true));
+      });
+      return () => {
+        cancelAnimationFrame(outerRaf);
+        if (innerRaf) cancelAnimationFrame(innerRaf);
+      };
+    };
+
+    if (activeBg.type === "image") {
+      const targetId = activeBg.id;
+      const currentToBg = toBg;
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        if (activeBgRef.current.id !== targetId) return;
+        setFromBg(currentToBg);
+        setToBg(activeBgRef.current);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setIsFading(true));
+        });
+      };
+      img.src = activeBg.value;
+      return;
+    }
+
+    return runTransition();
   }, [activeBg]);
 
   const handleTransitionEnd = () => {
