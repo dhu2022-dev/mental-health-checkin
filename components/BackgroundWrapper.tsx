@@ -5,6 +5,24 @@ import { useAllBackgrounds } from "@/lib/use-backgrounds";
 import { INK_PLACEHOLDER, type HomeBackground } from "@/lib/home-backgrounds";
 import { BackgroundProvider } from "@/lib/background-context";
 
+const FADE_MS = 600;
+
+function bgLayerStyle(bg: HomeBackground): React.CSSProperties {
+  if (bg.type === "gradient") {
+    return {
+      backgroundImage: bg.value,
+      backgroundColor: "#1a1816",
+    };
+  }
+  return {
+    backgroundImage: `url(${bg.value}), linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`,
+    backgroundSize: "cover, cover",
+    backgroundPosition: "center, center",
+    backgroundRepeat: "no-repeat, no-repeat",
+    backgroundColor: "#1a1816",
+  };
+}
+
 type Props = {
   children: React.ReactNode;
   /** If true, wrap children in a white rounded card; otherwise full-bleed content */
@@ -39,38 +57,66 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
     setBg(backgrounds[i]);
   }, [backgrounds, hasFetched, bg]);
 
-  const activeBg =
-    bg ??
-    (hasFetched && backgrounds.length > 0 ? backgrounds[0] : INK_PLACEHOLDER) ??
-    INK_PLACEHOLDER;
+  const activeBg = bg ?? INK_PLACEHOLDER;
   const overlay = activeBg?.overlay ?? 0.3;
+
+  const [fromBg, setFromBg] = useState(activeBg);
+  const [toBg, setToBg] = useState(activeBg);
+  const [isFading, setIsFading] = useState(false);
+
+  useEffect(() => {
+    if (activeBg.id === toBg.id) return;
+    setFromBg(toBg);
+    setToBg(activeBg);
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setIsFading(true));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeBg]);
+
+  const handleTransitionEnd = () => {
+    if (!isFading) return;
+    setIsFading(false);
+    setFromBg(activeBg);
+  };
+
+  const isDifferent = fromBg.id !== toBg.id;
+  const showFrom = fromBg.id === toBg.id || !isFading;
+  const showTo = isDifferent && isFading;
+  const isSettled = fromBg.id === toBg.id;
+  const transitionStyle = isSettled
+    ? { transition: "none" as const }
+    : {
+        transitionDuration: `${FADE_MS}ms`,
+        transitionTimingFunction: "ease-in-out" as const,
+      };
 
   return (
     <BackgroundProvider value={contextValue}>
     <div className="min-h-screen relative overflow-hidden">
-      {/* Fixed viewport-filling background; gradient filler for widespace when image doesn't reach edges */}
+      {/* Two-layer crossfade: from (fading out) and to (fading in) */}
       <div
-        className="fixed inset-0 -z-10 w-screen h-screen"
-        style={
-          activeBg?.type === "gradient"
-            ? {
-                backgroundImage: activeBg.value,
-                backgroundColor: "#1a1816",
-              }
-            : activeBg?.type === "image"
-              ? {
-                  backgroundImage: `url(${activeBg.value}), linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`,
-                  backgroundSize: "cover, cover",
-                  backgroundPosition: "center, center",
-                  backgroundRepeat: "no-repeat, no-repeat",
-                  backgroundColor: "#1a1816",
-                }
-              : { backgroundColor: "#1a1816" }
-        }
+        className="fixed inset-0 -z-10 w-screen h-screen transition-opacity"
+        style={{
+          ...bgLayerStyle(fromBg),
+          opacity: showFrom ? 1 : 0,
+          ...transitionStyle,
+        }}
+        aria-hidden
+      />
+      <div
+        className="fixed inset-0 -z-10 w-screen h-screen transition-opacity"
+        style={{
+          ...bgLayerStyle(toBg),
+          opacity: showTo ? 1 : 0,
+          ...transitionStyle,
+        }}
+        onTransitionEnd={handleTransitionEnd}
+        aria-hidden
       />
       {/* Translucent overlay for readability */}
       <div
-        className="fixed inset-0 -z-10 w-screen h-screen"
+        className="fixed inset-0 -z-10 w-screen h-screen pointer-events-none"
         style={{ backgroundColor: `rgba(0, 0, 0, ${overlay})` }}
       />
       {contentBlock ? (

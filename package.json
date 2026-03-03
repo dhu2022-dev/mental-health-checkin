@@ -6,8 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "seed:backgrounds": "curl -s -X POST http://localhost:3000/api/background/seed"
+    "lint": "next lint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

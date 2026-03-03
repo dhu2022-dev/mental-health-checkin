@@ -22,9 +22,7 @@ export function BackgroundSettings() {
     fetch("/api/background")
       .then((r) => r.json())
         .then((data: { backgrounds?: { id: string; value: string; displayName?: string | null }[] }) => {
-        const custom =
-          data.backgrounds?.filter((b) => b.id.startsWith("custom_")) ?? [];
-        setCustomBackgrounds(custom);
+        setCustomBackgrounds(data.backgrounds ?? []);
       })
       .catch(() => {});
   }, []);
@@ -99,10 +97,10 @@ export function BackgroundSettings() {
   return (
     <section className="mt-8 pt-6 border-t border-stone-200">
       <h2 className="text-lg font-medium text-stone-800 mb-2">
-        Custom background
+        Background gallery
       </h2>
       <p className="text-stone-600 text-sm mb-3">
-        Upload your own image. Max 4MB.
+        Choose a background or upload your own (max 4MB).
       </p>
       <div className="flex flex-wrap gap-2 items-center">
         <label

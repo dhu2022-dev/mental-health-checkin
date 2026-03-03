@@ -41,10 +41,12 @@ npm install
 1. Create a project at [supabase.com](https://supabase.com) (free tier).
 2. In the **SQL Editor**, run the migrations in order:
    - `supabase/migrations/001_initial.sql` — check-ins and insights tables
-   - `supabase/migrations/002_backgrounds.sql` — app_settings for backgrounds
+   - `supabase/migrations/002_backgrounds.sql` — app_settings
+   - `supabase/migrations/003_background_images.sql` — background gallery table
+   - `supabase/migrations/004_background_display_name.sql` — display names
+   - `supabase/migrations/005_zen_to_background_images.sql` — zen in gallery, single source
 3. In **Project Settings → API**: copy **Project URL** and **service_role** key (keep secret).
-4. In **Storage**, create a bucket named `backgrounds` (Public ON). The API can also create it on first upload.
-5. *(Optional)* Seed the zen/mountain background: with the app running, `npm run seed:backgrounds`.
+4. In **Storage**, create a bucket named `backgrounds` (Public ON). Add `zen.jpg` for the default zen background, or upload your own.
 
 ### 3. Environment variables
 
@@ -102,10 +104,9 @@ If `CHECKIN_API_KEY` is set, add `x-api-key: <key>` header or `?key=<key>` query
 | `/api/checkins` | GET | List check-ins. Query: `from`, `to` (ISO dates) |
 | `/api/insights` | GET | List stored insights. Query: `limit` |
 | `/api/insights` | POST | Generate LLM insights. Body: `{ startDate, endDate, periodType? }` |
-| `/api/background` | GET | List backgrounds (ink gradient, zen, custom) |
+| `/api/background` | GET | List backgrounds from gallery (empty = black gradient) |
 | `/api/background` | POST | Upload custom background (multipart/form-data) |
 | `/api/background` | DELETE | Remove custom background |
-| `/api/background/seed` | POST | One-time seed: fetches a mountain image to Supabase and adds to rotation |
 
 ---
 
@@ -121,7 +122,7 @@ The home page uses a simple state machine: `intro` → `smoke` → `quote` → `
 
 ### Backgrounds from DB
 
-All backgrounds live in Supabase: `app_settings` (custom + zen URLs) and the `backgrounds` bucket. No hardcoded image URLs in the client. Sharp crops/resizes uploads to 1920×1080 (fit: cover) for consistent display; a gradient filler handles widescreen when the image doesn't reach edges.
+All backgrounds come from the `background_images` table and `backgrounds` bucket (single source). When the gallery is empty, a black gradient shows. Migration 005 adds the zen row; ensure `zen.jpg` exists in the bucket. Custom uploads are cropped to 1920×1080 (fit: cover).
 
 ### Unified date range
 
