@@ -13,19 +13,19 @@ type Props = {
 export function BackgroundWrapper({ children, contentBlock = false }: Props) {
   const { backgrounds, hasFetched } = useAllBackgrounds();
   const [bg, setBg] = useState<HomeBackground | null>(null);
-  const hadCustomRef = useRef(false);
+  const prevCustomCountRef = useRef(0);
 
   useEffect(() => {
     if (!hasFetched || backgrounds.length === 0) return;
-    const hasCustom = backgrounds.some((b) => b.id.startsWith("custom_"));
-    const customJustAdded = hasCustom && !hadCustomRef.current;
-    hadCustomRef.current = hasCustom;
+    const customBackgrounds = backgrounds.filter((b) => b.id.startsWith("custom_"));
+    const customCount = customBackgrounds.length;
+    const customJustAdded = customCount > prevCustomCountRef.current;
+    prevCustomCountRef.current = customCount;
 
     const currentStillInList = bg && backgrounds.some((b) => b.id === bg.id);
     if (currentStillInList) {
-      if (customJustAdded) {
-        const customBg = backgrounds.find((b) => b.id.startsWith("custom_"));
-        if (customBg) setBg(customBg);
+      if (customJustAdded && customBackgrounds.length > 0) {
+        setBg(customBackgrounds[0]);
       }
       return;
     }
