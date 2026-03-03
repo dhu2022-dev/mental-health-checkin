@@ -7,6 +7,7 @@ import { useBackgroundContext } from "@/lib/background-context";
 type CustomBg = { id: string; value: string; displayName?: string | null };
 
 const DISPLAY_LIMIT = 3;
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
 export function BackgroundSettings() {
   const bgContext = useBackgroundContext();
@@ -40,6 +41,11 @@ export function BackgroundSettings() {
       if (!file) return;
       if (!file.type.startsWith("image/")) {
         setError("Please select an image file (JPEG, PNG, WebP, or GIF)");
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setError("File too large. Max 4MB.");
+        e.target.value = "";
         return;
       }
       setLoading(true);
