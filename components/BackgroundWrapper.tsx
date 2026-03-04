@@ -5,6 +5,24 @@ import { useAllBackgrounds } from "@/lib/use-backgrounds";
 import { INK_PLACEHOLDER, type HomeBackground } from "@/lib/home-backgrounds";
 import { BackgroundProvider } from "@/lib/background-context";
 
+const FADE_MS = 600;
+
+function bgLayerStyle(bg: HomeBackground): React.CSSProperties {
+  if (bg.type === "gradient") {
+    return {
+      backgroundImage: bg.value,
+      backgroundColor: "#1a1816",
+    };
+  }
+  return {
+    backgroundImage: `url(${bg.value}), linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`,
+    backgroundSize: "cover, cover",
+    backgroundPosition: "center, center",
+    backgroundRepeat: "no-repeat, no-repeat",
+    backgroundColor: "#1a1816",
+  };
+}
+
 type Props = {
   children: React.ReactNode;
   /** If true, wrap children in a white rounded card; otherwise full-bleed content */
@@ -23,54 +41,123 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
 
   useEffect(() => {
     if (!hasFetched || backgrounds.length === 0) return;
-    const customBackgrounds = backgrounds.filter((b) => b.id.startsWith("custom_"));
-    const customCount = customBackgrounds.length;
-    const customJustAdded = customCount > prevCustomCountRef.current;
-    prevCustomCountRef.current = customCount;
 
-    const currentStillInList = bg && backgrounds.some((b) => b.id === bg.id);
-    if (currentStillInList) {
-      if (customJustAdded && customBackgrounds.length > 0) {
-        setBg(customBackgrounds[0]);
-      }
+    const customBackgrounds = backgrounds.filter((b) => b.id.startsWith("custom_"));
+    const prevCount = prevCustomCountRef.current;
+    prevCustomCountRef.current = customBackgrounds.length;
+    const customJustAdded = customBackgrounds.length > prevCount;
+
+    const currentInList = bg && backgrounds.some((b) => b.id === bg.id);
+
+    // Upload: use newest (first user-uploaded; zen is excluded via overlay)
+    if (customJustAdded && customBackgrounds.length > 0) {
+      const newest = customBackgrounds.find((b) => b.overlay === 0.35) ?? customBackgrounds[0];
+      setBg(newest);
       return;
     }
-    const i = Math.floor(Math.random() * backgrounds.length);
-    setBg(backgrounds[i]);
+
+    // Removed: current no longer in list → pick random
+    if (bg && !currentInList) {
+      const i = Math.floor(Math.random() * backgrounds.length);
+      setBg(backgrounds[i]);
+      return;
+    }
+
+    // Initial load: no selection yet → pick random
+    if (!bg) {
+      const i = Math.floor(Math.random() * backgrounds.length);
+      setBg(backgrounds[i]);
+    }
+    // User selected from gallery: keep current (handled by setBackground in context)
   }, [backgrounds, hasFetched, bg]);
 
-  const activeBg =
-    bg ??
-    (hasFetched && backgrounds.length > 0 ? backgrounds[0] : INK_PLACEHOLDER) ??
-    INK_PLACEHOLDER;
+  const activeBg = bg ?? INK_PLACEHOLDER;
   const overlay = activeBg?.overlay ?? 0.3;
+
+  const [fromBg, setFromBg] = useState(activeBg);
+  const [toBg, setToBg] = useState(activeBg);
+  const [isFading, setIsFading] = useState(false);
+  const activeBgRef = useRef(activeBg);
+  activeBgRef.current = activeBg;
+
+  useEffect(() => {
+    if (activeBg.id === toBg.id) return;
+
+    const runTransition = () => {
+      setFromBg(toBg);
+      setToBg(activeBg);
+      let innerRaf = 0;
+      const outerRaf = requestAnimationFrame(() => {
+        innerRaf = requestAnimationFrame(() => setIsFading(true));
+      });
+      return () => {
+        cancelAnimationFrame(outerRaf);
+        if (innerRaf) cancelAnimationFrame(innerRaf);
+      };
+    };
+
+    if (activeBg.type === "image") {
+      const targetId = activeBg.id;
+      const currentToBg = toBg;
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        if (activeBgRef.current.id !== targetId) return;
+        setFromBg(currentToBg);
+        setToBg(activeBgRef.current);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setIsFading(true));
+        });
+      };
+      img.src = activeBg.value;
+      return;
+    }
+
+    return runTransition();
+  }, [activeBg]);
+
+  const handleTransitionEnd = () => {
+    if (!isFading) return;
+    setIsFading(false);
+    setFromBg(activeBg);
+  };
+
+  const isDifferent = fromBg.id !== toBg.id;
+  const showFrom = fromBg.id === toBg.id || !isFading;
+  const showTo = isDifferent && isFading;
+  const isSettled = fromBg.id === toBg.id;
+  const transitionStyle = isSettled
+    ? { transition: "none" as const }
+    : {
+        transitionDuration: `${FADE_MS}ms`,
+        transitionTimingFunction: "ease-in-out" as const,
+      };
 
   return (
     <BackgroundProvider value={contextValue}>
     <div className="min-h-screen relative overflow-hidden">
-      {/* Fixed viewport-filling background; gradient filler for widespace when image doesn't reach edges */}
+      {/* Two-layer crossfade: from (fading out) and to (fading in) */}
       <div
-        className="fixed inset-0 -z-10 w-screen h-screen"
-        style={
-          activeBg?.type === "gradient"
-            ? {
-                backgroundImage: activeBg.value,
-                backgroundColor: "#1a1816",
-              }
-            : activeBg?.type === "image"
-              ? {
-                  backgroundImage: `url(${activeBg.value}), linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`,
-                  backgroundSize: "cover, cover",
-                  backgroundPosition: "center, center",
-                  backgroundRepeat: "no-repeat, no-repeat",
-                  backgroundColor: "#1a1816",
-                }
-              : { backgroundColor: "#1a1816" }
-        }
+        className="fixed inset-0 -z-10 w-screen h-screen transition-opacity"
+        style={{
+          ...bgLayerStyle(fromBg),
+          opacity: showFrom ? 1 : 0,
+          ...transitionStyle,
+        }}
+        aria-hidden
+      />
+      <div
+        className="fixed inset-0 -z-10 w-screen h-screen transition-opacity"
+        style={{
+          ...bgLayerStyle(toBg),
+          opacity: showTo ? 1 : 0,
+          ...transitionStyle,
+        }}
+        onTransitionEnd={handleTransitionEnd}
+        aria-hidden
       />
       {/* Translucent overlay for readability */}
       <div
-        className="fixed inset-0 -z-10 w-screen h-screen"
+        className="fixed inset-0 -z-10 w-screen h-screen pointer-events-none"
         style={{ backgroundColor: `rgba(0, 0, 0, ${overlay})` }}
       />
       {contentBlock ? (

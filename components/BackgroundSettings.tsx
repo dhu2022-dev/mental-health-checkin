@@ -3,10 +3,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { refreshBackgrounds } from "@/lib/use-backgrounds";
 import { useBackgroundContext } from "@/lib/background-context";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 type CustomBg = { id: string; value: string; displayName?: string | null };
 
 const DISPLAY_LIMIT = 3;
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
 export function BackgroundSettings() {
   const bgContext = useBackgroundContext();
@@ -16,14 +18,13 @@ export function BackgroundSettings() {
   const [loading, setLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const fetchCustom = useCallback(() => {
     fetch("/api/background")
       .then((r) => r.json())
         .then((data: { backgrounds?: { id: string; value: string; displayName?: string | null }[] }) => {
-        const custom =
-          data.backgrounds?.filter((b) => b.id.startsWith("custom_")) ?? [];
-        setCustomBackgrounds(custom);
+        setCustomBackgrounds(data.backgrounds ?? []);
       })
       .catch(() => {});
   }, []);
@@ -33,7 +34,7 @@ export function BackgroundSettings() {
   }, [fetchCustom, successType]);
 
   const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       setError(null);
       setSuccessType(null);
       const file = e.target.files?.[0];
@@ -42,8 +43,29 @@ export function BackgroundSettings() {
         setError("Please select an image file (JPEG, PNG, WebP, or GIF)");
         return;
       }
+      if (file.size > MAX_FILE_SIZE) {
+        setError("File too large. Max 4MB.");
+        e.target.value = "";
+        return;
+      }
+      setCropFile(file);
+      e.target.value = "";
+    },
+    []
+  );
+
+  const handleCropConfirm = useCallback(
+    async (blob: Blob) => {
+      const fileToCrop = cropFile;
+      if (!fileToCrop) return;
+      setCropFile(null);
       setLoading(true);
+      setError(null);
+      setSuccessType(null);
       try {
+        const file = new File([blob], fileToCrop.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+          type: "image/jpeg",
+        });
         const formData = new FormData();
         formData.set("file", file);
         const res = await fetch("/api/background", {
@@ -63,11 +85,14 @@ export function BackgroundSettings() {
         setError(err instanceof Error ? err.message : "Upload failed");
       } finally {
         setLoading(false);
-        e.target.value = "";
       }
     },
-    []
+    [cropFile]
   );
+
+  const handleCropCancel = useCallback(() => {
+    setCropFile(null);
+  }, []);
 
   const handleRemove = useCallback(async (clientId: string) => {
     const uuid = clientId.startsWith("custom_") ? clientId.slice(7) : clientId;
@@ -93,25 +118,25 @@ export function BackgroundSettings() {
   return (
     <section className="mt-8 pt-6 border-t border-stone-200">
       <h2 className="text-lg font-medium text-stone-800 mb-2">
-        Custom background
+        Background gallery
       </h2>
       <p className="text-stone-600 text-sm mb-3">
-        Upload your own image. Max 4MB.
+        Choose a background or upload your own (max 4MB). Use a landscape image—you&apos;ll crop it to 16:9 before upload.
       </p>
       <div className="flex flex-wrap gap-2 items-center">
         <label
           className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition inline-block ${
-            loading
+            loading || cropFile
               ? "bg-stone-300 text-stone-500 cursor-not-allowed"
               : "bg-stone-700 text-white hover:bg-stone-800"
           }`}
         >
-          {loading ? "Uploading…" : "Upload image"}
+          {loading ? "Uploading…" : cropFile ? "Crop your image…" : "Upload image"}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={handleFileChange}
-            disabled={loading}
+            disabled={loading || !!cropFile}
             className="hidden"
           />
         </label>
@@ -200,6 +225,13 @@ export function BackgroundSettings() {
         <p className="text-emerald-600 text-sm mt-2">
           Background removed.
         </p>
+      )}
+      {cropFile && (
+        <ImageCropModal
+          file={cropFile}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
       )}
     </section>
   );

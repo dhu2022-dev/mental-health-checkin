@@ -6,7 +6,6 @@ import { randomUUID } from "crypto";
 const BUCKET = "backgrounds";
 const TARGET_WIDTH = 1920;
 const TARGET_HEIGHT = 1080;
-const ZEN_SETTINGS_KEY = "zen_background";
 const MAX_SIZE = 4 * 1024 * 1024; // 4MB (Vercel serverless body limit ~4.5MB)
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
@@ -18,44 +17,28 @@ export async function GET() {
     });
   }
   try {
-    const [settingsRes, customRes] = await Promise.all([
-      supabase
-        .from("app_settings")
-        .select("key, value")
-        .eq("key", ZEN_SETTINGS_KEY),
-      supabase
-        .from("background_images")
-        .select("id, storage_path, display_name")
-        .order("created_at", { ascending: false }),
-    ]);
+    const { data: rows } = await supabase
+      .from("background_images")
+      .select("id, storage_path, display_name, created_at")
+      .order("created_at", { ascending: false });
 
-    const zenUrl = (settingsRes.data?.[0]?.value as { url?: string } | null)?.url ?? null;
-    const customRows = customRes.data ?? [];
+    const sorted =
+      rows?.sort((a, b) => {
+        if (a.storage_path === "zen.jpg") return -1;
+        if (b.storage_path === "zen.jpg") return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }) ?? [];
 
-    const customBackgrounds = customRows.map((row) => {
+    const backgrounds = sorted.map((row) => {
       const publicUrl = supabase!.storage.from(BUCKET).getPublicUrl(row.storage_path).data.publicUrl;
       return {
         id: `custom_${row.id}`,
         type: "image" as const,
         value: publicUrl,
-        overlay: 0.35,
+        overlay: row.storage_path === "zen.jpg" ? 0.4 : 0.35,
         displayName: row.display_name ?? null,
       };
     });
-
-    const backgrounds = [
-      ...(zenUrl
-        ? [
-            {
-              id: "zen",
-              type: "image" as const,
-              value: zenUrl,
-              overlay: 0.4,
-            },
-          ]
-        : []),
-      ...customBackgrounds,
-    ];
 
     return NextResponse.json({ backgrounds, hasFetched: true });
   } catch {
