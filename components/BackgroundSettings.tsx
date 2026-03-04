@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { refreshBackgrounds } from "@/lib/use-backgrounds";
 import { useBackgroundContext } from "@/lib/background-context";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 type CustomBg = { id: string; value: string; displayName?: string | null };
 
@@ -17,6 +18,7 @@ export function BackgroundSettings() {
   const [loading, setLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const fetchCustom = useCallback(() => {
     fetch("/api/background")
@@ -32,7 +34,7 @@ export function BackgroundSettings() {
   }, [fetchCustom, successType]);
 
   const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       setError(null);
       setSuccessType(null);
       const file = e.target.files?.[0];
@@ -46,8 +48,24 @@ export function BackgroundSettings() {
         e.target.value = "";
         return;
       }
+      setCropFile(file);
+      e.target.value = "";
+    },
+    []
+  );
+
+  const handleCropConfirm = useCallback(
+    async (blob: Blob) => {
+      const fileToCrop = cropFile;
+      if (!fileToCrop) return;
+      setCropFile(null);
       setLoading(true);
+      setError(null);
+      setSuccessType(null);
       try {
+        const file = new File([blob], fileToCrop.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+          type: "image/jpeg",
+        });
         const formData = new FormData();
         formData.set("file", file);
         const res = await fetch("/api/background", {
@@ -67,11 +85,14 @@ export function BackgroundSettings() {
         setError(err instanceof Error ? err.message : "Upload failed");
       } finally {
         setLoading(false);
-        e.target.value = "";
       }
     },
-    []
+    [cropFile]
   );
+
+  const handleCropCancel = useCallback(() => {
+    setCropFile(null);
+  }, []);
 
   const handleRemove = useCallback(async (clientId: string) => {
     const uuid = clientId.startsWith("custom_") ? clientId.slice(7) : clientId;
@@ -100,22 +121,22 @@ export function BackgroundSettings() {
         Background gallery
       </h2>
       <p className="text-stone-600 text-sm mb-3">
-        Choose a background or upload your own (max 4MB).
+        Choose a background or upload your own (max 4MB). Use a landscape image—you&apos;ll crop it to 16:9 before upload.
       </p>
       <div className="flex flex-wrap gap-2 items-center">
         <label
           className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition inline-block ${
-            loading
+            loading || cropFile
               ? "bg-stone-300 text-stone-500 cursor-not-allowed"
               : "bg-stone-700 text-white hover:bg-stone-800"
           }`}
         >
-          {loading ? "Uploading…" : "Upload image"}
+          {loading ? "Uploading…" : cropFile ? "Crop your image…" : "Upload image"}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={handleFileChange}
-            disabled={loading}
+            disabled={loading || !!cropFile}
             className="hidden"
           />
         </label>
@@ -204,6 +225,13 @@ export function BackgroundSettings() {
         <p className="text-emerald-600 text-sm mt-2">
           Background removed.
         </p>
+      )}
+      {cropFile && (
+        <ImageCropModal
+          file={cropFile}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
       )}
     </section>
   );
