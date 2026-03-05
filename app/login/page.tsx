@@ -9,31 +9,31 @@ const BASE_GRADIENT =
 const TEAL_BREATH =
   "linear-gradient(135deg, transparent 0%, rgba(20, 184, 166, 0.4) 40%, rgba(6, 182, 212, 0.5) 60%, rgba(20, 184, 166, 0.4) 100%)";
 
-/* 20 particles: underwater light motes. Sizes 3-6px, bluish-white, soft glow. 6-12s cycle. */
+/* 20 particles: underwater light motes. Sizes 6-12px (2× original), bluish-white, soft glow. 6-12s cycle. */
 const PARTICLES = [
-  { left: "14%", top: "22%", size: 4, dx: 6, dy: -28, wobble: 5, duration: 8000, delay: 0, glow: true },
-  { left: "82%", top: "18%", size: 3, dx: -8, dy: -32, wobble: 4, duration: 9500, delay: 1200, glow: false },
-  { left: "48%", top: "72%", size: 5, dx: 12, dy: -22, wobble: 6, duration: 7200, delay: 2800, glow: true },
-  { left: "8%", top: "58%", size: 4, dx: -5, dy: -26, wobble: 5, duration: 8800, delay: 500, glow: true },
-  { left: "68%", top: "45%", size: 3, dx: 3, dy: -30, wobble: 4, duration: 10200, delay: 3500, glow: false },
-  { left: "32%", top: "38%", size: 4, dx: -10, dy: -24, wobble: 5, duration: 7500, delay: 1800, glow: false },
-  { left: "88%", top: "75%", size: 3, dx: 7, dy: -28, wobble: 4, duration: 9200, delay: 4200, glow: false },
-  { left: "52%", top: "12%", size: 6, dx: -6, dy: -26, wobble: 6, duration: 11000, delay: 2100, glow: true },
-  { left: "22%", top: "82%", size: 4, dx: 9, dy: -20, wobble: 5, duration: 7800, delay: 1500, glow: true },
-  { left: "75%", top: "8%", size: 3, dx: -4, dy: -34, wobble: 4, duration: 8600, delay: 4000, glow: false },
-  { left: "38%", top: "52%", size: 4, dx: 8, dy: -25, wobble: 5, duration: 9400, delay: 6000, glow: false },
-  { left: "5%", top: "38%", size: 3, dx: -7, dy: -29, wobble: 4, duration: 7000, delay: 800, glow: false },
-  { left: "62%", top: "65%", size: 5, dx: 4, dy: -26, wobble: 6, duration: 10500, delay: 3200, glow: true },
-  { left: "42%", top: "25%", size: 4, dx: -9, dy: -27, wobble: 5, duration: 8100, delay: 4500, glow: true },
-  { left: "92%", top: "42%", size: 3, dx: 5, dy: -31, wobble: 4, duration: 9000, delay: 1200, glow: false },
-  { left: "18%", top: "68%", size: 4, dx: -6, dy: -23, wobble: 5, duration: 7600, delay: 2500, glow: false },
-  { left: "58%", top: "48%", size: 3, dx: 10, dy: -28, wobble: 4, duration: 9800, delay: 5000, glow: false },
-  { left: "96%", top: "55%", size: 5, dx: -3, dy: -25, wobble: 6, duration: 8500, delay: 3800, glow: true },
-  { left: "28%", top: "15%", size: 4, dx: 7, dy: -30, wobble: 5, duration: 7300, delay: 2800, glow: false },
-  { left: "72%", top: "78%", size: 3, dx: -8, dy: -22, wobble: 4, duration: 10600, delay: 1600, glow: false },
+  { left: "14%", top: "22%", size: 8, dx: 6, dy: -28, wobble: 5, duration: 8000, delay: 0, glow: true },
+  { left: "82%", top: "18%", size: 6, dx: -8, dy: -32, wobble: 4, duration: 9500, delay: 1200, glow: false },
+  { left: "48%", top: "72%", size: 10, dx: 12, dy: -22, wobble: 6, duration: 7200, delay: 2800, glow: true },
+  { left: "8%", top: "58%", size: 8, dx: -5, dy: -26, wobble: 5, duration: 8800, delay: 500, glow: true },
+  { left: "68%", top: "45%", size: 6, dx: 3, dy: -30, wobble: 4, duration: 10200, delay: 3500, glow: false },
+  { left: "32%", top: "38%", size: 8, dx: -10, dy: -24, wobble: 5, duration: 7500, delay: 1800, glow: false },
+  { left: "88%", top: "75%", size: 6, dx: 7, dy: -28, wobble: 4, duration: 9200, delay: 4200, glow: false },
+  { left: "52%", top: "12%", size: 12, dx: -6, dy: -26, wobble: 6, duration: 11000, delay: 2100, glow: true },
+  { left: "22%", top: "82%", size: 8, dx: 9, dy: -20, wobble: 5, duration: 7800, delay: 1500, glow: true },
+  { left: "75%", top: "8%", size: 6, dx: -4, dy: -34, wobble: 4, duration: 8600, delay: 4000, glow: false },
+  { left: "38%", top: "52%", size: 8, dx: 8, dy: -25, wobble: 5, duration: 9400, delay: 6000, glow: false },
+  { left: "5%", top: "38%", size: 6, dx: -7, dy: -29, wobble: 4, duration: 7000, delay: 800, glow: false },
+  { left: "62%", top: "65%", size: 10, dx: 4, dy: -26, wobble: 6, duration: 10500, delay: 3200, glow: true },
+  { left: "42%", top: "25%", size: 8, dx: -9, dy: -27, wobble: 5, duration: 8100, delay: 4500, glow: true },
+  { left: "92%", top: "42%", size: 6, dx: 5, dy: -31, wobble: 4, duration: 9000, delay: 1200, glow: false },
+  { left: "18%", top: "68%", size: 8, dx: -6, dy: -23, wobble: 5, duration: 7600, delay: 2500, glow: false },
+  { left: "58%", top: "48%", size: 6, dx: 10, dy: -28, wobble: 4, duration: 9800, delay: 5000, glow: false },
+  { left: "96%", top: "55%", size: 10, dx: -3, dy: -25, wobble: 6, duration: 8500, delay: 3800, glow: true },
+  { left: "28%", top: "15%", size: 8, dx: 7, dy: -30, wobble: 5, duration: 7300, delay: 2800, glow: false },
+  { left: "72%", top: "78%", size: 6, dx: -8, dy: -22, wobble: 4, duration: 10600, delay: 1600, glow: false },
 ];
 
-const PARTICLE_MAX_OPACITY = 0.17;
+const PARTICLE_MAX_OPACITY = 0.38;
 
 function phaseToStyle(
   phase: number,
@@ -158,7 +158,7 @@ function LoginForm() {
           dy: p.dy,
           wobble: p.wobble,
         });
-        const moteColor = "rgba(205, 225, 255, 1)";
+        const moteColor = "rgba(255, 255, 255, 0.95)";
         return (
           <div
             key={i}
@@ -171,10 +171,10 @@ function LoginForm() {
               zIndex: 1,
               opacity,
               transform,
-              background: `radial-gradient(circle at center, ${moteColor} 0%, rgba(195,215,245,0.4) 50%, transparent 70%)`,
+              background: `radial-gradient(circle at center, ${moteColor} 0%, rgba(245,248,255,0.6) 50%, transparent 70%)`,
               boxShadow: p.glow
-                ? `0 0 ${p.size * 3}px rgba(200,220,255,0.5)`
-                : `0 0 ${p.size * 2}px rgba(200,220,255,0.35)`,
+                ? `0 0 ${p.size * 3}px rgba(255,255,255,0.95), 0 0 ${p.size * 8}px rgba(250,252,255,0.9), 0 0 ${p.size * 14}px rgba(240,248,255,0.75)`
+                : `0 0 ${p.size * 2}px rgba(255,255,255,0.9), 0 0 ${p.size * 6}px rgba(248,252,255,0.85), 0 0 ${p.size * 10}px rgba(240,248,255,0.7)`,
               filter: "blur(0.5px)",
             }}
           />
