@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -9,16 +9,62 @@ const BASE_GRADIENT =
 const TEAL_BREATH =
   "linear-gradient(135deg, transparent 0%, rgba(20, 184, 166, 0.4) 40%, rgba(6, 182, 212, 0.5) 60%, rgba(20, 184, 166, 0.4) 100%)";
 
-const PARTICLE_POSITIONS = [
-  { left: "12%", top: "23%" },
-  { left: "78%", top: "15%" },
-  { left: "45%", top: "72%" },
-  { left: "88%", top: "55%" },
-  { left: "8%", top: "68%" },
-  { left: "62%", top: "12%" },
-  { left: "35%", top: "45%" },
-  { left: "92%", top: "82%" },
+/* 20 particles: underwater light motes. Sizes 3-6px, bluish-white, soft glow. 6-12s cycle. */
+const PARTICLES = [
+  { left: "14%", top: "22%", size: 4, dx: 6, dy: -28, wobble: 5, duration: 8000, delay: 0, glow: true },
+  { left: "82%", top: "18%", size: 3, dx: -8, dy: -32, wobble: 4, duration: 9500, delay: 1200, glow: false },
+  { left: "48%", top: "72%", size: 5, dx: 12, dy: -22, wobble: 6, duration: 7200, delay: 2800, glow: true },
+  { left: "8%", top: "58%", size: 4, dx: -5, dy: -26, wobble: 5, duration: 8800, delay: 500, glow: true },
+  { left: "68%", top: "45%", size: 3, dx: 3, dy: -30, wobble: 4, duration: 10200, delay: 3500, glow: false },
+  { left: "32%", top: "38%", size: 4, dx: -10, dy: -24, wobble: 5, duration: 7500, delay: 1800, glow: false },
+  { left: "88%", top: "75%", size: 3, dx: 7, dy: -28, wobble: 4, duration: 9200, delay: 4200, glow: false },
+  { left: "52%", top: "12%", size: 6, dx: -6, dy: -26, wobble: 6, duration: 11000, delay: 2100, glow: true },
+  { left: "22%", top: "82%", size: 4, dx: 9, dy: -20, wobble: 5, duration: 7800, delay: 1500, glow: true },
+  { left: "75%", top: "8%", size: 3, dx: -4, dy: -34, wobble: 4, duration: 8600, delay: 4000, glow: false },
+  { left: "38%", top: "52%", size: 4, dx: 8, dy: -25, wobble: 5, duration: 9400, delay: 6000, glow: false },
+  { left: "5%", top: "38%", size: 3, dx: -7, dy: -29, wobble: 4, duration: 7000, delay: 800, glow: false },
+  { left: "62%", top: "65%", size: 5, dx: 4, dy: -26, wobble: 6, duration: 10500, delay: 3200, glow: true },
+  { left: "42%", top: "25%", size: 4, dx: -9, dy: -27, wobble: 5, duration: 8100, delay: 4500, glow: true },
+  { left: "92%", top: "42%", size: 3, dx: 5, dy: -31, wobble: 4, duration: 9000, delay: 1200, glow: false },
+  { left: "18%", top: "68%", size: 4, dx: -6, dy: -23, wobble: 5, duration: 7600, delay: 2500, glow: false },
+  { left: "58%", top: "48%", size: 3, dx: 10, dy: -28, wobble: 4, duration: 9800, delay: 5000, glow: false },
+  { left: "96%", top: "55%", size: 5, dx: -3, dy: -25, wobble: 6, duration: 8500, delay: 3800, glow: true },
+  { left: "28%", top: "15%", size: 4, dx: 7, dy: -30, wobble: 5, duration: 7300, delay: 2800, glow: false },
+  { left: "72%", top: "78%", size: 3, dx: -8, dy: -22, wobble: 4, duration: 10600, delay: 1600, glow: false },
 ];
+
+const PARTICLE_MAX_OPACITY = 0.17;
+
+function phaseToStyle(
+  phase: number,
+  drift: { dx: number; dy: number; wobble: number }
+): { opacity: number; transform: string } {
+  const { dx, dy, wobble } = drift;
+  let opacity: number;
+  let tx: number;
+  let ty: number;
+  if (phase < 0.06) {
+    opacity = (phase / 0.06) * PARTICLE_MAX_OPACITY;
+    tx = 0;
+    ty = 0;
+  } else if (phase < 0.65) {
+    opacity = PARTICLE_MAX_OPACITY;
+    const t = (phase - 0.06) / 0.59;
+    const wobbleFactor = Math.sin(t * Math.PI);
+    tx = dx * t + wobble * wobbleFactor;
+    ty = dy * t + wobble * wobbleFactor * 0.15;
+  } else if (phase < 1) {
+    const fadePhase = (phase - 0.65) / 0.35;
+    opacity = PARTICLE_MAX_OPACITY * (1 - fadePhase);
+    tx = dx;
+    ty = dy;
+  } else {
+    opacity = 0;
+    tx = dx;
+    ty = dy;
+  }
+  return { opacity, transform: `translate(${tx}px, ${ty}px)` };
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -28,6 +74,26 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [particlePhases, setParticlePhases] = useState<number[]>(() =>
+    PARTICLES.map(() => 0)
+  );
+  const startRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    startRef.current = Date.now();
+    const update = () => {
+      const elapsed = Date.now() - startRef.current;
+      setParticlePhases(() =>
+        PARTICLES.map((p) => {
+          const effective = Math.max(0, (elapsed - p.delay) / p.duration);
+          return effective % 1;
+        })
+      );
+    };
+    update();
+    const interval = setInterval(update, 50);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,20 +151,35 @@ function LoginForm() {
         </filter>
         <rect width="100%" height="100%" filter="url(#login-noise)" />
       </svg>
-      {/* Ambient particles */}
-      {PARTICLE_POSITIONS.map((pos, i) => (
-        <div
-          key={i}
-          className="absolute w-1 h-1 rounded-full bg-white/40 pointer-events-none animate-float"
-          style={{
-            left: pos.left,
-            top: pos.top,
-            zIndex: 0,
-            animationDelay: `${i * 2.5}s`,
-            animationDuration: `${18 + i * 2}s`,
-          }}
-        />
-      ))}
+      {/* Ambient particles - underwater light motes: soft, bluish-white, plankton catching light */}
+      {PARTICLES.map((p, i) => {
+        const { opacity, transform } = phaseToStyle(particlePhases[i], {
+          dx: p.dx,
+          dy: p.dy,
+          wobble: p.wobble,
+        });
+        const moteColor = "rgba(205, 225, 255, 1)";
+        return (
+          <div
+            key={i}
+            className="absolute rounded-full pointer-events-none transition-none"
+            style={{
+              left: p.left,
+              top: p.top,
+              width: p.size,
+              height: p.size,
+              zIndex: 1,
+              opacity,
+              transform,
+              background: `radial-gradient(circle at center, ${moteColor} 0%, rgba(195,215,245,0.4) 50%, transparent 70%)`,
+              boxShadow: p.glow
+                ? `0 0 ${p.size * 3}px rgba(200,220,255,0.5)`
+                : `0 0 ${p.size * 2}px rgba(200,220,255,0.35)`,
+              filter: "blur(0.5px)",
+            }}
+          />
+        );
+      })}
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="rounded-2xl bg-white/[0.07] backdrop-blur-xl border border-white/10 p-8 shadow-2xl shadow-black/20">
