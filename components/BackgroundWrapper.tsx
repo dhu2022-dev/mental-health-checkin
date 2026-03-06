@@ -45,7 +45,7 @@ export function BackgroundWrapper({ children, contentBlock = false }: Props) {
     const customBackgrounds = backgrounds.filter((b) => b.id.startsWith("custom_"));
     const prevCount = prevCustomCountRef.current;
     prevCustomCountRef.current = customBackgrounds.length;
-    const customJustAdded = customBackgrounds.length > prevCount;
+    const customJustAdded = prevCount > 0 && customBackgrounds.length > prevCount;
 
     const currentInList = bg && backgrounds.some((b) => b.id === bg.id);
 
