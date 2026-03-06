@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { BackgroundWrapper } from "@/components/BackgroundWrapper";
 import { BackgroundSettings } from "@/components/BackgroundSettings";
 import {
@@ -116,6 +118,7 @@ function downloadCSV(checkIns: CheckIn[]) {
 const DASHBOARD_FADE_MS = 500;
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [rangeIndex, setRangeIndex] = useState(0); // 7 days default
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
@@ -128,6 +131,13 @@ export default function DashboardPage() {
   const chartData = useChartData(checkIns);
 
   useEffect(() => setMounted(true), []);
+
+  const handleSignOut = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }, [router]);
 
   useEffect(() => {
     const range = RANGES[rangeIndex];
@@ -221,14 +231,13 @@ export default function DashboardPage() {
             Check-in dashboard
           </h1>
         </div>
-        <form action="/api/auth/logout" method="POST">
-          <button
-            type="submit"
-            className="text-stone-500 hover:text-stone-700 text-sm"
-          >
-            Sign out
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="text-stone-500 hover:text-stone-700 text-sm"
+        >
+          Sign out
+        </button>
       </header>
 
       <section className="mb-8">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type Phase = "intro" | "smoke" | "quote" | "fadeOut" | "home";
 
@@ -46,6 +47,13 @@ export default function HomePage() {
   const handleOpenDashboard = useCallback(() => {
     setNavigatingToDashboard(true);
     setTimeout(() => router.push("/dashboard"), DASHBOARD_TRANSITION_MS);
+  }, [router]);
+
+  const handleSignOut = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
   }, [router]);
 
   useEffect(() => {
@@ -142,18 +150,13 @@ export default function HomePage() {
         className="fixed inset-0 -z-10 w-screen h-screen"
         style={{ backgroundColor: "rgba(0, 0, 0, 0.25)" }}
       />
-      <form
-        action="/api/auth/logout"
-        method="POST"
-        className="fixed top-4 right-4 z-20"
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className="fixed top-4 right-4 z-20 px-3 py-1.5 rounded text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
       >
-        <button
-          type="submit"
-          className="px-3 py-1.5 rounded text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
-        >
-          Sign out
-        </button>
-      </form>
+        Sign out
+      </button>
       <h1 className="text-2xl font-semibold text-white mb-4 drop-shadow">
         Take a moment to Check-in
       </h1>
