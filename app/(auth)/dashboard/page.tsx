@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { BackgroundWrapper } from "@/components/BackgroundWrapper";
 import { BackgroundSettings } from "@/components/BackgroundSettings";
 import {
@@ -118,7 +116,6 @@ function downloadCSV(checkIns: CheckIn[]) {
 const DASHBOARD_FADE_MS = 500;
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [rangeIndex, setRangeIndex] = useState(0); // 7 days default
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
@@ -131,13 +128,6 @@ export default function DashboardPage() {
   const chartData = useChartData(checkIns);
 
   useEffect(() => setMounted(true), []);
-
-  const handleSignOut = useCallback(async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }, [router]);
 
   useEffect(() => {
     const range = RANGES[rangeIndex];
@@ -211,34 +201,34 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="transition-opacity ease-out relative"
+      className="transition-opacity ease-out"
       style={{
         opacity: mounted ? 1 : 0,
         transitionDuration: `${DASHBOARD_FADE_MS}ms`,
       }}
     >
-      <button
-        type="button"
-        onClick={handleSignOut}
-        className="fixed top-4 right-4 z-50 px-3 py-1.5 rounded text-sm text-white/90 hover:text-white hover:bg-white/10 transition"
-        aria-label="Sign out"
-      >
-        Sign out
-      </button>
       <BackgroundWrapper contentBlock>
         <main>
-        <header className="flex items-center justify-between mb-8 gap-4">
-        <div className="flex items-center gap-4 min-w-0">
+        <header className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="text-stone-500 hover:text-stone-700 text-sm shrink-0"
+            className="text-stone-500 hover:text-stone-700 text-sm"
           >
             Home
           </Link>
-          <h1 className="text-xl font-semibold text-stone-800 truncate">
+          <h1 className="text-xl font-semibold text-stone-800">
             Check-in dashboard
           </h1>
         </div>
+        <form action="/api/auth/logout" method="POST">
+          <button
+            type="submit"
+            className="text-stone-500 hover:text-stone-700 text-sm"
+          >
+            Sign out
+          </button>
+        </form>
       </header>
 
       <section className="mb-8">
