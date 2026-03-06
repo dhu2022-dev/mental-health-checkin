@@ -211,33 +211,34 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="transition-opacity ease-out"
+      className="transition-opacity ease-out relative"
       style={{
         opacity: mounted ? 1 : 0,
         transitionDuration: `${DASHBOARD_FADE_MS}ms`,
       }}
     >
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className="fixed top-4 right-4 z-50 px-3 py-1.5 rounded text-sm text-white/90 hover:text-white hover:bg-white/10 transition"
+        aria-label="Sign out"
+      >
+        Sign out
+      </button>
       <BackgroundWrapper contentBlock>
         <main>
-        <header className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+        <header className="flex items-center justify-between mb-8 gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <Link
             href="/"
-            className="text-stone-500 hover:text-stone-700 text-sm"
+            className="text-stone-500 hover:text-stone-700 text-sm shrink-0"
           >
             Home
           </Link>
-          <h1 className="text-xl font-semibold text-stone-800">
+          <h1 className="text-xl font-semibold text-stone-800 truncate">
             Check-in dashboard
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="text-stone-500 hover:text-stone-700 text-sm"
-        >
-          Sign out
-        </button>
       </header>
 
       <section className="mb-8">
