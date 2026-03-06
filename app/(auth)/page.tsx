@@ -1,22 +1,32 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useVideoConductor } from "@/lib/use-video-conductor";
+import { IntroErrorBoundary } from "@/components/IntroErrorBoundary";
 
-type Phase = "intro" | "smoke" | "quote" | "fadeOut" | "home";
+type Phase = "intro" | "vignette" | "quote" | "fadeOut" | "home";
 
-const INTRO_DURATION_MS = 5500;
-const SMOKE_DURATION_MS = 800;
-const QUOTE_DURATION_MS = 4000;
-const FADEOUT_DURATION_MS = 2000;
+/** Base: vignette fade duration. Other phases derive from this to keep proportions. */
+const VIGNETTE_FADE_MS = 2500;
+const QUOTE_LEAD_BEFORE_VIGNETTE_END_MS = 1000;
+
+const VIGNETTE_DURATION_MS = VIGNETTE_FADE_MS;
+const QUOTE_LEAD_MS = Math.max(0, VIGNETTE_DURATION_MS - QUOTE_LEAD_BEFORE_VIGNETTE_END_MS);
+const QUOTE_FADE_MS = VIGNETTE_FADE_MS;
+const QUOTE_LINGER_MS = 900;
+const QUOTE_DURATION_MS =
+  (QUOTE_FADE_MS - (VIGNETTE_DURATION_MS - QUOTE_LEAD_MS)) + QUOTE_LINGER_MS;
+const VIGNETTE_FALLBACK_MS = VIGNETTE_DURATION_MS + 700;
+const FADEOUT_DURATION_MS = 2800;
 const INTRO_FADE_IN_MS = 1200;
-const SMOKE_LEAD_MS = 1200;
-const VIDEO_PAUSE_LEAD_MS = 300;
-const QUOTE_LEAD_MS = 400;
-const SMOKE_FADE_MS = 1200;
+const INTRO_PLAY_AT_MS = 960; // 80% through fade-in
+
+/** Video-time thresholds (seconds from play start). */
+const VIDEO_VIGNETTE_S = 3.34;
+const VIDEO_PAUSE_AND_PHASE_S = 4.24; // Pause and transition to vignette phase (can't fire after pause—video stops)
 
 const EASE_SMOOTH = "cubic-bezier(0.25, 0.1, 0.25, 1)";
-
 const INTRO_QUOTE = "Some nights you just need to slow down and breathe.";
 const DASHBOARD_TRANSITION_MS = 500;
 
@@ -25,16 +35,34 @@ const HOME_GRADIENT =
 
 const SKIP_STORAGE_KEY = "mhc_intro_skipped";
 
+/** Set to true and check browser console (F12) to trace phase flow when animation hangs. */
+const DEBUG_INTRO = false;
+const log = DEBUG_INTRO ? (...args: unknown[]) => console.log("[intro]", ...args) : () => {};
+
 export default function HomePage() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase | "pending">("pending");
-  const [videoLoaded, setVideoLoaded] = useState(false);
   const [navigatingToDashboard, setNavigatingToDashboard] = useState(false);
   const [introFadedIn, setIntroFadedIn] = useState(false);
   const [homeLayerVisible, setHomeLayerVisible] = useState(false);
-  const [smokeStarted, setSmokeStarted] = useState(false);
+  const [vignetteStarted, setVignetteStarted] = useState(false);
   const [quoteFadeStarted, setQuoteFadeStarted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { isReady, start } = useVideoConductor(videoRef, {
+    enabled: phase === "intro",
+    thresholds: [
+      { seconds: VIDEO_VIGNETTE_S, callback: () => { log("conductor: vignette"); setVignetteStarted(true); } },
+      {
+        seconds: VIDEO_PAUSE_AND_PHASE_S,
+        callback: () => {
+          log("conductor: pause + phase → vignette");
+          videoRef.current?.pause();
+          setPhase("vignette");
+        },
+      },
+    ],
+  });
 
   const goHome = useCallback((fromSkip = false) => {
     if (fromSkip && typeof window !== "undefined") {
@@ -50,11 +78,13 @@ export default function HomePage() {
 
   useEffect(() => {
     const skipped = typeof window !== "undefined" ? sessionStorage.getItem(SKIP_STORAGE_KEY) : null;
-    setPhase(skipped === "1" ? "home" : "intro");
+    const initial = skipped === "1" ? "home" : "intro";
+    log("initial phase:", initial);
+    setPhase(initial);
   }, []);
 
   useEffect(() => {
-    if (phase === "smoke" || phase === "quote" || phase === "fadeOut") {
+    if (phase === "vignette" || phase === "quote" || phase === "fadeOut") {
       videoRef.current?.pause();
     }
   }, [phase]);
@@ -62,53 +92,41 @@ export default function HomePage() {
   useEffect(() => {
     if (phase !== "intro") return;
     setIntroFadedIn(false);
-    setSmokeStarted(false);
-    const t1 = setTimeout(() => setIntroFadedIn(true), 10);
-    const playAt = INTRO_FADE_IN_MS * 0.8;
-    const t2 = setTimeout(() => videoRef.current?.play(), playAt);
-    const smokeLead = Math.max(0, INTRO_DURATION_MS - SMOKE_LEAD_MS);
-    const t3 = setTimeout(() => setSmokeStarted(true), smokeLead);
-    const pauseLead = Math.max(0, INTRO_DURATION_MS - VIDEO_PAUSE_LEAD_MS);
-    const t4 = setTimeout(() => videoRef.current?.pause(), pauseLead);
+    setVignetteStarted(false);
+    if (!isReady) return;
+    log("intro: isReady, scheduling fade-in + play at", INTRO_PLAY_AT_MS, "ms");
+    const t1 = setTimeout(() => { log("intro: fade-in"); setIntroFadedIn(true); }, 10);
+    const t2 = setTimeout(() => { log("intro: start video"); start(); }, INTRO_PLAY_AT_MS);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
     };
-  }, [phase]);
+  }, [phase, isReady, start]);
 
   useEffect(() => {
-    if (phase !== "smoke") return;
+    if (phase !== "vignette") return;
     setQuoteFadeStarted(false);
     const t = setTimeout(() => setQuoteFadeStarted(true), QUOTE_LEAD_MS);
     return () => clearTimeout(t);
   }, [phase]);
 
-  useEffect(() => {
-    if (phase !== "intro" && phase !== "smoke" && phase !== "quote" && phase !== "fadeOut") return;
-
+  useLayoutEffect(() => {
+    if (phase !== "vignette" && phase !== "quote" && phase !== "fadeOut") return;
+    log("phase effect:", phase, "setting timers");
     const timers: ReturnType<typeof setTimeout>[] = [];
-
-    if (phase === "intro") {
-      if (videoLoaded) {
-        timers.push(setTimeout(() => setPhase("smoke"), INTRO_DURATION_MS));
-      } else {
-        timers.push(setTimeout(() => setPhase("smoke"), 12000));
-      }
-    } else if (phase === "smoke") {
-      timers.push(setTimeout(() => setPhase("quote"), SMOKE_DURATION_MS));
+    if (phase === "vignette") {
+      timers.push(setTimeout(() => { log("timer: vignette → quote"); setPhase("quote"); }, VIGNETTE_DURATION_MS));
+      timers.push(setTimeout(() => { log("timer: fallback vignette → quote"); setPhase((p) => (p === "vignette" ? "quote" : p)); }, VIGNETTE_FALLBACK_MS));
     } else if (phase === "quote") {
-      timers.push(setTimeout(() => setPhase("fadeOut"), QUOTE_DURATION_MS));
+      timers.push(setTimeout(() => { log("timer: quote → fadeOut"); setPhase("fadeOut"); }, QUOTE_DURATION_MS));
     } else if (phase === "fadeOut") {
-      timers.push(setTimeout(() => goHome(false), FADEOUT_DURATION_MS));
+      timers.push(setTimeout(() => { log("timer: fadeOut → home"); goHome(false); }, FADEOUT_DURATION_MS));
     }
-
-    return () => timers.forEach(clearTimeout);
-  }, [phase, goHome, videoLoaded]);
+    return () => { log("phase effect cleanup:", phase); timers.forEach(clearTimeout); };
+  }, [phase, goHome]);
 
   useEffect(() => {
-    if (phase !== "intro") setSmokeStarted(false);
+    if (phase !== "intro") setVignetteStarted(false);
   }, [phase]);
 
   useEffect(() => {
@@ -184,7 +202,7 @@ export default function HomePage() {
     );
   }
 
-  const showIntro = phase === "intro" || phase === "smoke" || phase === "quote" || phase === "fadeOut";
+  const showIntro = phase === "intro" || phase === "vignette" || phase === "quote" || phase === "fadeOut";
   const isFadeOut = phase === "fadeOut";
 
   return (
@@ -215,7 +233,7 @@ export default function HomePage() {
         }}
       >
         {showIntro && (
-          <>
+          <IntroErrorBoundary onFallback={() => goHome(true)}>
             {/* Video layer - paused at first frame until 80% through fade-in */}
             <div className="absolute inset-0 -z-20 w-screen h-screen">
               <video
@@ -226,33 +244,32 @@ export default function HomePage() {
                 playsInline
                 preload="auto"
                 className="w-full h-full object-cover object-center"
-                onLoadedData={() => setVideoLoaded(true)}
               />
             </div>
 
-            {/* Smoke overlay - overlaps with intro (last 1.2s), stretches over 1.2s */}
+            {/* Vignette overlay - radial gradient dims video, fades in over VIGNETTE_FADE_MS */}
             <div
               className="absolute inset-0 -z-10 w-screen h-screen pointer-events-none transition-opacity"
               style={{
                 opacity:
                   phase === "quote" || phase === "fadeOut"
                     ? 1
-                    : phase === "smoke" || (phase === "intro" && smokeStarted)
-                      ? 0.9
+                    : phase === "vignette" || (phase === "intro" && vignetteStarted)
+                      ? 0.95
                       : 0,
-                transitionDuration: `${SMOKE_FADE_MS}ms`,
+                transitionDuration: `${VIGNETTE_FADE_MS}ms`,
                 transitionTimingFunction: EASE_SMOOTH,
                 background:
-                  "radial-gradient(ellipse at center, rgba(45,40,50,0.4) 0%, rgba(26,22,28,0.85) 50%, rgba(18,16,18,0.98) 100%)",
+                  "radial-gradient(ellipse at center, rgba(30,25,35,0.6) 0%, rgba(15,12,18,0.95) 50%, rgba(5,5,8,1) 100%)",
               }}
             />
 
-            {/* Quote layer - overlaps with smoke (starts 400ms into smoke phase) */}
+            {/* Quote layer - starts 1s before vignette phase ends */}
             <div
               className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity"
               style={{
-                opacity: phase === "quote" || (phase === "smoke" && quoteFadeStarted) ? 1 : 0,
-                transitionDuration: "2500ms",
+                opacity: phase === "quote" || phase === "fadeOut" || (phase === "vignette" && quoteFadeStarted) ? 1 : 0,
+                transitionDuration: `${QUOTE_FADE_MS}ms`,
                 transitionTimingFunction: EASE_SMOOTH,
               }}
             >
@@ -269,7 +286,7 @@ export default function HomePage() {
             >
               Skip
             </button>
-          </>
+          </IntroErrorBoundary>
         )}
       </div>
     </main>

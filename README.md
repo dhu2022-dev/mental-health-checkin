@@ -8,7 +8,7 @@ A calm, minimal web app for daily mood tracking: capture check-ins via an iPhone
 - **Mood chart** — Line chart with daily average + 7-day rolling average (Recharts)
 - **LLM insights** — GPT-4o-mini analyzes your entries and surfaces positive/negative themes for any date range
 - **Custom dashboard backgrounds** — Upload your own images (max 4MB); auto-cropped to 16:9 for consistent display
-- **Cinematic intro** — Phase-based animation: video → smoke overlay → quote → fade to home
+- **Cinematic intro** — Phase-based animation: video → vignette overlay → quote → fade to home
 
 ---
 
@@ -118,7 +118,7 @@ Shortcuts' JSON support is flaky, so we accept `date;mood;notes` in the URL quer
 
 ### Phase-based intro
 
-The home page uses a simple state machine: `intro` → `smoke` → `quote` → `fadeOut` → `home`. Video starts paused, fades in over 1.2s, then plays; smoke overlay overlaps the last ~1.2s; quote fades in during smoke. Skip uses `sessionStorage` so a refresh in the same session goes straight to home.
+The home page uses a simple state machine: `intro` → `vignette` → `quote` → `fadeOut` → `home`. Video starts paused, fades in over 1.2s, then plays; vignette overlay dims the video; quote fades in toward end of vignette phase. Skip uses `sessionStorage` so a refresh in the same session goes straight to home.
 
 ### Backgrounds from DB
 

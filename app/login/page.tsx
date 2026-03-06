@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const BASE_GRADIENT =
@@ -105,7 +105,6 @@ function phaseToStyle(
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/";
   const [email, setEmail] = useState("");
@@ -145,8 +144,7 @@ function LoginForm() {
         setError(err.message);
         return;
       }
-      router.push(redirect);
-      router.refresh();
+      window.location.href = redirect;
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
