@@ -1,22 +1,26 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useVideoConductor } from "@/lib/use-video-conductor";
+import { IntroErrorBoundary } from "@/components/IntroErrorBoundary";
 
 type Phase = "intro" | "smoke" | "quote" | "fadeOut" | "home";
 
-const INTRO_DURATION_MS = 5500;
 const SMOKE_DURATION_MS = 800;
+const SMOKE_FALLBACK_MS = 1500; // If stuck in smoke (e.g. extension conflict), advance
 const QUOTE_DURATION_MS = 4000;
 const FADEOUT_DURATION_MS = 2000;
 const INTRO_FADE_IN_MS = 1200;
-const SMOKE_LEAD_MS = 1200;
-const VIDEO_PAUSE_LEAD_MS = 300;
 const QUOTE_LEAD_MS = 400;
 const SMOKE_FADE_MS = 1200;
+const INTRO_PLAY_AT_MS = 960; // 80% through 1.2s fade-in
+
+/** Video-time thresholds (seconds from play start). */
+const VIDEO_SMOKE_S = 3.34;
+const VIDEO_PAUSE_AND_PHASE_S = 4.24; // Pause and transition to smoke together (can't fire after pause—video stops)
 
 const EASE_SMOOTH = "cubic-bezier(0.25, 0.1, 0.25, 1)";
-
 const INTRO_QUOTE = "Some nights you just need to slow down and breathe.";
 const DASHBOARD_TRANSITION_MS = 500;
 
@@ -25,16 +29,34 @@ const HOME_GRADIENT =
 
 const SKIP_STORAGE_KEY = "mhc_intro_skipped";
 
+/** Set to true and check browser console (F12) to trace phase flow when animation hangs. */
+const DEBUG_INTRO = false;
+const log = DEBUG_INTRO ? (...args: unknown[]) => console.log("[intro]", ...args) : () => {};
+
 export default function HomePage() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase | "pending">("pending");
-  const [videoLoaded, setVideoLoaded] = useState(false);
   const [navigatingToDashboard, setNavigatingToDashboard] = useState(false);
   const [introFadedIn, setIntroFadedIn] = useState(false);
   const [homeLayerVisible, setHomeLayerVisible] = useState(false);
   const [smokeStarted, setSmokeStarted] = useState(false);
   const [quoteFadeStarted, setQuoteFadeStarted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { isReady, start } = useVideoConductor(videoRef, {
+    enabled: phase === "intro",
+    thresholds: [
+      { seconds: VIDEO_SMOKE_S, callback: () => { log("conductor: smoke overlay"); setSmokeStarted(true); } },
+      {
+        seconds: VIDEO_PAUSE_AND_PHASE_S,
+        callback: () => {
+          log("conductor: pause + phase → smoke");
+          videoRef.current?.pause();
+          setPhase("smoke");
+        },
+      },
+    ],
+  });
 
   const goHome = useCallback((fromSkip = false) => {
     if (fromSkip && typeof window !== "undefined") {
@@ -50,7 +72,9 @@ export default function HomePage() {
 
   useEffect(() => {
     const skipped = typeof window !== "undefined" ? sessionStorage.getItem(SKIP_STORAGE_KEY) : null;
-    setPhase(skipped === "1" ? "home" : "intro");
+    const initial = skipped === "1" ? "home" : "intro";
+    log("initial phase:", initial);
+    setPhase(initial);
   }, []);
 
   useEffect(() => {
@@ -63,20 +87,15 @@ export default function HomePage() {
     if (phase !== "intro") return;
     setIntroFadedIn(false);
     setSmokeStarted(false);
-    const t1 = setTimeout(() => setIntroFadedIn(true), 10);
-    const playAt = INTRO_FADE_IN_MS * 0.8;
-    const t2 = setTimeout(() => videoRef.current?.play(), playAt);
-    const smokeLead = Math.max(0, INTRO_DURATION_MS - SMOKE_LEAD_MS);
-    const t3 = setTimeout(() => setSmokeStarted(true), smokeLead);
-    const pauseLead = Math.max(0, INTRO_DURATION_MS - VIDEO_PAUSE_LEAD_MS);
-    const t4 = setTimeout(() => videoRef.current?.pause(), pauseLead);
+    if (!isReady) return;
+    log("intro: isReady, scheduling fade-in + play at", INTRO_PLAY_AT_MS, "ms");
+    const t1 = setTimeout(() => { log("intro: fade-in"); setIntroFadedIn(true); }, 10);
+    const t2 = setTimeout(() => { log("intro: start video"); start(); }, INTRO_PLAY_AT_MS);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
     };
-  }, [phase]);
+  }, [phase, isReady, start]);
 
   useEffect(() => {
     if (phase !== "smoke") return;
@@ -85,27 +104,20 @@ export default function HomePage() {
     return () => clearTimeout(t);
   }, [phase]);
 
-  useEffect(() => {
-    if (phase !== "intro" && phase !== "smoke" && phase !== "quote" && phase !== "fadeOut") return;
-
+  useLayoutEffect(() => {
+    if (phase !== "smoke" && phase !== "quote" && phase !== "fadeOut") return;
+    log("phase effect:", phase, "setting timers");
     const timers: ReturnType<typeof setTimeout>[] = [];
-
-    if (phase === "intro") {
-      if (videoLoaded) {
-        timers.push(setTimeout(() => setPhase("smoke"), INTRO_DURATION_MS));
-      } else {
-        timers.push(setTimeout(() => setPhase("smoke"), 12000));
-      }
-    } else if (phase === "smoke") {
-      timers.push(setTimeout(() => setPhase("quote"), SMOKE_DURATION_MS));
+    if (phase === "smoke") {
+      timers.push(setTimeout(() => { log("timer: smoke → quote"); setPhase("quote"); }, SMOKE_DURATION_MS));
+      timers.push(setTimeout(() => { log("timer: fallback smoke → quote"); setPhase((p) => (p === "smoke" ? "quote" : p)); }, SMOKE_FALLBACK_MS));
     } else if (phase === "quote") {
-      timers.push(setTimeout(() => setPhase("fadeOut"), QUOTE_DURATION_MS));
+      timers.push(setTimeout(() => { log("timer: quote → fadeOut"); setPhase("fadeOut"); }, QUOTE_DURATION_MS));
     } else if (phase === "fadeOut") {
-      timers.push(setTimeout(() => goHome(false), FADEOUT_DURATION_MS));
+      timers.push(setTimeout(() => { log("timer: fadeOut → home"); goHome(false); }, FADEOUT_DURATION_MS));
     }
-
-    return () => timers.forEach(clearTimeout);
-  }, [phase, goHome, videoLoaded]);
+    return () => { log("phase effect cleanup:", phase); timers.forEach(clearTimeout); };
+  }, [phase, goHome]);
 
   useEffect(() => {
     if (phase !== "intro") setSmokeStarted(false);
@@ -215,7 +227,7 @@ export default function HomePage() {
         }}
       >
         {showIntro && (
-          <>
+          <IntroErrorBoundary onFallback={() => goHome(true)}>
             {/* Video layer - paused at first frame until 80% through fade-in */}
             <div className="absolute inset-0 -z-20 w-screen h-screen">
               <video
@@ -226,7 +238,6 @@ export default function HomePage() {
                 playsInline
                 preload="auto"
                 className="w-full h-full object-cover object-center"
-                onLoadedData={() => setVideoLoaded(true)}
               />
             </div>
 
@@ -269,7 +280,7 @@ export default function HomePage() {
             >
               Skip
             </button>
-          </>
+          </IntroErrorBoundary>
         )}
       </div>
     </main>
