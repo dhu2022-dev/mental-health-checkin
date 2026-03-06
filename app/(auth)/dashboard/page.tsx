@@ -221,6 +221,14 @@ export default function DashboardPage() {
             Check-in dashboard
           </h1>
         </div>
+        <form action="/api/auth/logout" method="POST">
+          <button
+            type="submit"
+            className="text-stone-500 hover:text-stone-700 text-sm"
+          >
+            Sign out
+          </button>
+        </form>
       </header>
 
       <section className="mb-8">
