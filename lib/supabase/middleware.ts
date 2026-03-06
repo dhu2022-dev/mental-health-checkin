@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseEnv } from "./env";
 
 /**
  * Middleware only refreshes the session (updates cookies if needed).
@@ -8,16 +9,15 @@ import { NextResponse, type NextRequest } from "next/server";
  * On Vercel Edge, request.cookies can be empty, so we don't rely on middleware for auth.
  */
 export async function updateSession(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { url: supabaseUrl, key: supabaseKey } = getSupabaseEnv();
 
   let response = NextResponse.next({ request });
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseKey) {
     return response;
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
