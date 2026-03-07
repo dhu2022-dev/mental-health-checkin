@@ -11,15 +11,15 @@ function bgLayerStyle(bg: HomeBackground): React.CSSProperties {
   if (bg.type === "gradient") {
     return {
       backgroundImage: bg.value,
-      backgroundColor: "#1a1816",
+      backgroundColor: "#020617",
     };
   }
   return {
-    backgroundImage: `url(${bg.value}), linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)`,
+    backgroundImage: `url(${bg.value}), linear-gradient(135deg, #020617 0%, #0a0f1a 25%, #0f172a 50%, #0a0f1a 75%, #020617 100%)`,
     backgroundSize: "cover, cover",
     backgroundPosition: "center, center",
     backgroundRepeat: "no-repeat, no-repeat",
-    backgroundColor: "#1a1816",
+    backgroundColor: "#020617",
   };
 }
 

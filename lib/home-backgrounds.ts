@@ -6,10 +6,10 @@ export type HomeBackground =
   | { id: string; type: "gradient"; value: string; overlay?: number }
   | { id: string; type: "image"; value: string; overlay?: number };
 
-/** Fallback when loading or when the gallery is empty - black gradient */
+/** Fallback when loading or when the gallery is empty - dark navy, tangent with login */
 export const INK_PLACEHOLDER: HomeBackground = {
   id: "ink",
   type: "gradient",
-  value: "linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%)",
+  value: "linear-gradient(180deg, #020617 0%, #0f172a 50%, #020617 100%)",
   overlay: 0.3,
 };

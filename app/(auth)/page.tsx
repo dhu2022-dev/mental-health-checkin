@@ -30,8 +30,9 @@ const EASE_SMOOTH = "cubic-bezier(0.25, 0.1, 0.25, 1)";
 const INTRO_QUOTE = "Some nights you just need to slow down and breathe.";
 const DASHBOARD_TRANSITION_MS = 500;
 
+/** Dark cool theme – tangent with login navy; unifies pending, home, intro */
 const HOME_GRADIENT =
-  "linear-gradient(135deg, #1a1816 0%, #2a2520 25%, #252220 50%, #2a2520 75%, #1a1816 100%)";
+  "linear-gradient(135deg, #020617 0%, #0a0f1a 25%, #0f172a 50%, #0a0f1a 75%, #020617 100%)";
 
 const SKIP_STORAGE_KEY = "mhc_intro_skipped";
 
@@ -144,7 +145,7 @@ export default function HomePage() {
       <main className="min-h-screen">
         <div
           className="fixed inset-0 -z-10 w-screen h-screen"
-          style={{ background: HOME_GRADIENT, backgroundColor: "#1a1816" }}
+          style={{ background: HOME_GRADIENT, backgroundColor: "#020617" }}
         />
       </main>
     );
@@ -154,7 +155,7 @@ export default function HomePage() {
     <>
       <div
         className="fixed inset-0 -z-10 w-screen h-screen"
-        style={{ background: HOME_GRADIENT, backgroundColor: "#1a1816" }}
+        style={{ background: HOME_GRADIENT, backgroundColor: "#020617" }}
       />
       <div
         className="fixed inset-0 -z-10 w-screen h-screen"
