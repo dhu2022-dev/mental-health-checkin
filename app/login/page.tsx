@@ -137,6 +137,7 @@ function LoginForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    let didRedirect = false;
     try {
       const supabase = createClient();
       const { error: err } = await supabase.auth.signInWithPassword({ email, password });
@@ -144,11 +145,12 @@ function LoginForm() {
         setError(err.message);
         return;
       }
+      didRedirect = true;
       window.location.href = redirect;
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
-      setLoading(false);
+      if (!didRedirect) setLoading(false);
     }
   };
 
