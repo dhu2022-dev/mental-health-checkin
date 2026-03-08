@@ -32,7 +32,7 @@ const DASHBOARD_TRANSITION_MS = 500;
 
 /** Dark cool theme – tangent with login navy; unifies pending, home, intro */
 const HOME_GRADIENT =
-  "linear-gradient(135deg, #020617 0%, #0a0f1a 25%, #0f172a 50%, #0a0f1a 75%, #020617 100%)";
+  "linear-gradient(135deg, #020617 0%, #0a0f1a 20%, #0f172a 40%, #152238 50%, #0f172a 60%, #0a0f1a 80%, #020617 100%)";
 
 /** Set to true and check browser console (F12) to trace phase flow when animation hangs. */
 const DEBUG_INTRO = false;

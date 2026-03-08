@@ -15,7 +15,7 @@ function bgLayerStyle(bg: HomeBackground): React.CSSProperties {
     };
   }
   return {
-    backgroundImage: `url(${bg.value}), linear-gradient(135deg, #020617 0%, #0a0f1a 25%, #0f172a 50%, #0a0f1a 75%, #020617 100%)`,
+    backgroundImage: `url(${bg.value}), linear-gradient(135deg, #020617 0%, #0a0f1a 20%, #0f172a 40%, #152238 50%, #0f172a 60%, #0a0f1a 80%, #020617 100%)`,
     backgroundSize: "cover, cover",
     backgroundPosition: "center, center",
     backgroundRepeat: "no-repeat, no-repeat",
