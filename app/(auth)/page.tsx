@@ -34,8 +34,6 @@ const DASHBOARD_TRANSITION_MS = 500;
 const HOME_GRADIENT =
   "linear-gradient(135deg, #020617 0%, #0a0f1a 25%, #0f172a 50%, #0a0f1a 75%, #020617 100%)";
 
-const SKIP_STORAGE_KEY = "mhc_intro_skipped";
-
 /** Set to true and check browser console (F12) to trace phase flow when animation hangs. */
 const DEBUG_INTRO = false;
 const log = DEBUG_INTRO ? (...args: unknown[]) => console.log("[intro]", ...args) : () => {};
@@ -65,10 +63,7 @@ export default function HomePage() {
     ],
   });
 
-  const goHome = useCallback((fromSkip = false) => {
-    if (fromSkip && typeof window !== "undefined") {
-      sessionStorage.setItem(SKIP_STORAGE_KEY, "1");
-    }
+  const goHome = useCallback(() => {
     setPhase("home");
   }, []);
 
@@ -78,10 +73,8 @@ export default function HomePage() {
   }, [router]);
 
   useEffect(() => {
-    const skipped = typeof window !== "undefined" ? sessionStorage.getItem(SKIP_STORAGE_KEY) : null;
-    const initial = skipped === "1" ? "home" : "intro";
-    log("initial phase:", initial);
-    setPhase(initial);
+    log("initial phase: intro");
+    setPhase("intro");
   }, []);
 
   useEffect(() => {
@@ -121,7 +114,7 @@ export default function HomePage() {
     } else if (phase === "quote") {
       timers.push(setTimeout(() => { log("timer: quote → fadeOut"); setPhase("fadeOut"); }, QUOTE_DURATION_MS));
     } else if (phase === "fadeOut") {
-      timers.push(setTimeout(() => { log("timer: fadeOut → home"); goHome(false); }, FADEOUT_DURATION_MS));
+      timers.push(setTimeout(() => { log("timer: fadeOut → home"); goHome(); }, FADEOUT_DURATION_MS));
     }
     return () => { log("phase effect cleanup:", phase); timers.forEach(clearTimeout); };
   }, [phase, goHome]);
@@ -234,7 +227,7 @@ export default function HomePage() {
         }}
       >
         {showIntro && (
-          <IntroErrorBoundary onFallback={() => goHome(true)}>
+          <IntroErrorBoundary onFallback={() => goHome()}>
             {/* Video layer - paused at first frame until 80% through fade-in */}
             <div className="absolute inset-0 -z-20 w-screen h-screen">
               <video
@@ -282,7 +275,7 @@ export default function HomePage() {
             {/* Skip button */}
             <button
               type="button"
-              onClick={() => goHome(true)}
+              onClick={() => goHome()}
               className="fixed top-4 right-4 px-3 py-1.5 rounded text-sm text-white/80 hover:text-white hover:bg-white/10 transition z-10"
             >
               Skip
