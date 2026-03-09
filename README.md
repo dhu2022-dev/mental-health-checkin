@@ -77,9 +77,15 @@ Open [http://localhost:3000](http://localhost:3000). Dashboard: [http://localhos
 
 ## iPhone Shortcut
 
-iOS Shortcuts can't easily send JSON bodies, so we use a **query-string payload** instead.
+### Option A: JSON body (recommended for long notes—avoids URL length limits)
 
-### Build the payload
+1. Combine: `[Current Date]; [Mood 1–10]; [Notes]` → save as **RawVars**
+2. In **Get Contents of URL**:
+   - **URL**: `https://<your-app>.vercel.app/api/checkin` (add `?debug=1` to see received payload)
+   - **Method**: POST
+   - **Request Body**: JSON → Key `raw`, Value `RawVars`
+
+### Option B: Query string (original)
 
 1. Combine: `[Current Date]; [Mood 1–10]; [Notes]` → save as **RawVars**
 2. **URL Encode** RawVars → save as **RawEncoded**
@@ -100,7 +106,7 @@ If `CHECKIN_API_KEY` is set, add `x-api-key: <key>` header or `?key=<key>` query
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/checkin` | POST | Submit check-in. Query: `?raw=date;mood;notes` (URL-encoded) |
+| `/api/checkin` | POST | Submit check-in. Query: `?raw=...` or JSON body `{ raw: "date;mood;notes" }`. Add `?debug=1` for echo. |
 | `/api/checkins` | GET | List check-ins. Query: `from`, `to` (ISO dates) |
 | `/api/insights` | GET | List stored insights. Query: `limit` |
 | `/api/insights` | POST | Generate LLM insights. Body: `{ startDate, endDate, periodType? }` |
@@ -114,7 +120,7 @@ If `CHECKIN_API_KEY` is set, add `x-api-key: <key>` header or `?key=<key>` query
 
 ### Raw check-in format
 
-Shortcuts' JSON support is flaky, so we accept `date;mood;notes` in the URL query string. `parseSemicolonLine()` handles Apple's default date format (`Jan 12, 2026 at 9:00PM`) and falls back to "now" if parsing fails.
+We accept `date;mood;notes` either in the URL query string (`?raw=...`) or JSON body (`{ raw: "..." }`). JSON body avoids URL length limits for long notes. `parseSemicolonLine()` handles Apple's default date format (`Jan 12, 2026 at 9:00PM`) and falls back to "now" if parsing fails.
 
 ### Phase-based intro
 

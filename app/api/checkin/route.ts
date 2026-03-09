@@ -18,12 +18,36 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const raw = req.nextUrl.searchParams.get("raw");
+  const showDebug = req.nextUrl.searchParams.get("debug") === "1";
+
+  let raw: string | null = null;
+  let source: "body" | "query" = "query";
+
+  const contentType = req.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    try {
+      const body = await req.json();
+      const bodyRaw = typeof body?.raw === "string" ? body.raw.trim() : null;
+      if (bodyRaw) {
+        raw = bodyRaw;
+        source = "body";
+      }
+    } catch {
+      // Fall through to query
+    }
+  }
+
+  if (!raw) {
+    raw = req.nextUrl.searchParams.get("raw");
+  }
+
   const parsed = raw?.trim() ? parseSemicolonLine(raw) : null;
 
   if (!parsed) {
     return NextResponse.json(
-      { error: "Missing or invalid ?raw=date;mood;notes in URL" },
+      {
+        error: "Missing or invalid payload. Use ?raw=date;mood;notes in URL or JSON body { raw: '...' }",
+      },
       { status: 400 }
     );
   }
@@ -49,5 +73,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const res: { ok: boolean; debug?: object } = { ok: true };
+  if (showDebug) {
+    res.debug = {
+      source,
+      raw,
+      parsed: {
+        mood: parsed.mood,
+        notes: parsed.notes,
+        recorded_at: parsed.recorded_at.toISOString(),
+      },
+    };
+  }
+  return NextResponse.json(res);
 }
