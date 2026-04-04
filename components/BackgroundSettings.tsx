@@ -12,7 +12,6 @@ const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 export function BackgroundSettings() {
   const bgContext = useBackgroundContext();
   const [error, setError] = useState<string | null>(null);
-  const [successType, setSuccessType] = useState<"upload" | "remove" | null>(null);
   const [customBackgrounds, setCustomBackgrounds] = useState<CustomBg[]>([]);
   const [loading, setLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -30,12 +29,11 @@ export function BackgroundSettings() {
 
   useEffect(() => {
     fetchCustom();
-  }, [fetchCustom, successType]);
+  }, [fetchCustom]);
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setError(null);
-      setSuccessType(null);
       const file = e.target.files?.[0];
       if (!file) return;
       if (!file.type.startsWith("image/")) {
@@ -60,7 +58,6 @@ export function BackgroundSettings() {
       setCropFile(null);
       setLoading(true);
       setError(null);
-      setSuccessType(null);
       try {
         const file = new File([blob], fileToCrop.name.replace(/\.[^/.]+$/, "") + ".jpg", {
           type: "image/jpeg",
@@ -78,15 +75,15 @@ export function BackgroundSettings() {
           throw new Error(res.status === 413 ? "File too large" : "Server error");
         }
         if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
-        setSuccessType("upload");
         refreshBackgrounds();
+        fetchCustom();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
       } finally {
         setLoading(false);
       }
     },
-    [cropFile]
+    [cropFile, fetchCustom]
   );
 
   const handleCropCancel = useCallback(() => {
@@ -97,22 +94,21 @@ export function BackgroundSettings() {
     const uuid = clientId.startsWith("custom_") ? clientId.slice(7) : clientId;
     if (!uuid) return;
     setError(null);
-    setSuccessType(null);
     setRemovingId(clientId);
     try {
       const res = await fetch(`/api/background?id=${encodeURIComponent(uuid)}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Delete failed");
-      setSuccessType("remove");
       setCustomBackgrounds((prev) => prev.filter((b) => b.id !== clientId));
       refreshBackgrounds();
+      fetchCustom();
     } catch {
       setError("Failed to remove background");
     } finally {
       setRemovingId(null);
     }
-  }, []);
+  }, [fetchCustom]);
 
   const currentBgId = bgContext?.currentBgId ?? null;
   let visibleBackgrounds: CustomBg[];
@@ -229,16 +225,6 @@ export function BackgroundSettings() {
         </div>
       )}
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
-      {successType === "upload" && (
-        <p className="text-emerald-600 text-sm mt-2">
-          Background saved. It will appear in the rotation.
-        </p>
-      )}
-      {successType === "remove" && (
-        <p className="text-emerald-600 text-sm mt-2">
-          Background removed.
-        </p>
-      )}
       {cropFile && (
         <ImageCropModal
           file={cropFile}
