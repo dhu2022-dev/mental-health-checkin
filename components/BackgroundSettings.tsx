@@ -7,7 +7,6 @@ import { ImageCropModal } from "@/components/ImageCropModal";
 
 type CustomBg = { id: string; value: string; displayName?: string | null };
 
-const DISPLAY_LIMIT = 3;
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
 export function BackgroundSettings() {
@@ -115,6 +114,20 @@ export function BackgroundSettings() {
     }
   }, []);
 
+  const currentBgId = bgContext?.currentBgId ?? null;
+  let visibleBackgrounds: CustomBg[];
+  if (showAll) {
+    visibleBackgrounds = customBackgrounds;
+  } else {
+    const matched = customBackgrounds.filter((b) => b.id === currentBgId);
+    visibleBackgrounds =
+      matched.length > 0
+        ? matched
+        : customBackgrounds.length > 0
+          ? [customBackgrounds[0]]
+          : [];
+  }
+
   return (
     <section className="mt-8 pt-6 border-t border-stone-200">
       <h2 className="text-lg font-medium text-stone-800 mb-2">
@@ -144,7 +157,7 @@ export function BackgroundSettings() {
       {customBackgrounds.length > 0 && (
         <div className="mt-4">
           <ul className="space-y-2">
-            {(showAll ? customBackgrounds : customBackgrounds.slice(0, DISPLAY_LIMIT)).map((bg) => {
+            {visibleBackgrounds.map((bg) => {
               const isSelected = bgContext?.currentBgId === bg.id;
               const setBg = () =>
                 bgContext?.setBackground({
@@ -204,7 +217,7 @@ export function BackgroundSettings() {
               );
             })}
           </ul>
-          {customBackgrounds.length > DISPLAY_LIMIT && (
+          {customBackgrounds.length > 1 && (
             <button
               type="button"
               onClick={() => setShowAll((prev) => !prev)}
