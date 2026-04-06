@@ -125,7 +125,7 @@ export function BackgroundSettings() {
   }
 
   return (
-    <section className="mt-8 pt-6 border-t border-stone-200">
+    <section>
       <h2 className="text-lg font-medium text-stone-800 mb-2">
         Background gallery
       </h2>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { BackgroundWrapper } from "@/components/BackgroundWrapper";
 import { BackgroundSettings } from "@/components/BackgroundSettings";
@@ -115,6 +115,24 @@ function downloadCSV(checkIns: CheckIn[]) {
 
 const DASHBOARD_FADE_MS = 500;
 
+function HomeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
 type DashboardTab = "overview" | "style";
 
 export default function DashboardPage() {
@@ -129,6 +147,23 @@ export default function DashboardPage() {
   const [generating, setGenerating] = useState(false);
   const [insightError, setInsightError] = useState<string | null>(null);
   const chartData = useChartData(checkIns);
+  const overviewTabRef = useRef<HTMLButtonElement>(null);
+  const styleTabRef = useRef<HTMLButtonElement>(null);
+
+  const handleDashboardTabKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, tab: DashboardTab) => {
+      if (e.key === "ArrowRight" && tab === "overview") {
+        e.preventDefault();
+        setMainTab("style");
+        requestAnimationFrame(() => styleTabRef.current?.focus());
+      } else if (e.key === "ArrowLeft" && tab === "style") {
+        e.preventDefault();
+        setMainTab("overview");
+        requestAnimationFrame(() => overviewTabRef.current?.focus());
+      }
+    },
+    []
+  );
 
   useEffect(() => setMounted(true), []);
 
@@ -212,66 +247,77 @@ export default function DashboardPage() {
     >
       <BackgroundWrapper contentBlock>
         <main>
-        <header className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-stone-500 hover:text-stone-700 text-sm"
-          >
-            Home
-          </Link>
-          <h1 className="text-xl font-semibold text-stone-800">
-            Check-in dashboard
-          </h1>
+        <div className="mb-2">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex w-11 shrink-0 justify-start sm:w-12">
+              <Link
+                href="/"
+                aria-label="Home"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                <HomeIcon className="h-5 w-5" />
+              </Link>
+            </div>
+            <h1 className="min-w-0 flex-1 text-center text-xl font-semibold tracking-tight text-stone-800 sm:text-2xl">
+              Your check-ins
+            </h1>
+            <div className="flex max-w-[40%] shrink-0 justify-end sm:max-w-none">
+              <form action="/api/auth/logout" method="POST">
+                <button
+                  type="submit"
+                  className="min-h-[44px] rounded-lg px-2 text-sm text-stone-500 transition hover:bg-stone-100 hover:text-stone-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:px-3"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
-        <form action="/api/auth/logout" method="POST">
-          <button
-            type="submit"
-            className="text-stone-500 hover:text-stone-700 text-sm"
-          >
-            Sign out
-          </button>
-        </form>
-      </header>
 
-      <div
-        className="flex gap-8 border-b border-stone-200 mb-6"
-        role="tablist"
-        aria-label="Dashboard sections"
-      >
-        <button
-          type="button"
-          role="tab"
-          id="tab-overview"
-          aria-selected={mainTab === "overview" ? "true" : "false"}
-          aria-controls="panel-overview"
-          tabIndex={mainTab === "overview" ? 0 : -1}
-          onClick={() => setMainTab("overview")}
-          className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            mainTab === "overview"
-              ? "border-stone-800 text-stone-900"
-              : "border-transparent text-stone-500 hover:text-stone-700"
-          }`}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-style"
-          aria-selected={mainTab === "style" ? "true" : "false"}
-          aria-controls="panel-style"
-          tabIndex={mainTab === "style" ? 0 : -1}
-          onClick={() => setMainTab("style")}
-          className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            mainTab === "style"
-              ? "border-stone-800 text-stone-900"
-              : "border-transparent text-stone-500 hover:text-stone-700"
-          }`}
-        >
-          Style
-        </button>
-      </div>
+        <nav className="mb-6 border-b border-stone-200" aria-label="Dashboard views">
+          <div
+            className="flex gap-6 sm:gap-10"
+            role="tablist"
+            aria-label="Switch between insights and appearance"
+          >
+            <button
+              ref={overviewTabRef}
+              type="button"
+              role="tab"
+              id="tab-overview"
+              aria-selected={mainTab === "overview" ? "true" : "false"}
+              aria-controls="panel-overview"
+              tabIndex={mainTab === "overview" ? 0 : -1}
+              onClick={() => setMainTab("overview")}
+              onKeyDown={(e) => handleDashboardTabKeyDown(e, "overview")}
+              className={`inline-flex min-h-[44px] items-end pb-2.5 text-base font-medium border-b-2 -mb-px transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-t ${
+                mainTab === "overview"
+                  ? "border-stone-800 text-stone-900"
+                  : "border-transparent text-stone-500 hover:text-stone-800"
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              ref={styleTabRef}
+              type="button"
+              role="tab"
+              id="tab-style"
+              aria-selected={mainTab === "style" ? "true" : "false"}
+              aria-controls="panel-style"
+              tabIndex={mainTab === "style" ? 0 : -1}
+              onClick={() => setMainTab("style")}
+              onKeyDown={(e) => handleDashboardTabKeyDown(e, "style")}
+              className={`inline-flex min-h-[44px] items-end pb-2.5 text-base font-medium border-b-2 -mb-px transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-t ${
+                mainTab === "style"
+                  ? "border-stone-800 text-stone-900"
+                  : "border-transparent text-stone-500 hover:text-stone-800"
+              }`}
+            >
+              Style
+            </button>
+          </div>
+        </nav>
 
       <div
         id="panel-overview"
@@ -485,10 +531,6 @@ export default function DashboardPage() {
         aria-labelledby="tab-style"
         hidden={mainTab !== "style"}
       >
-        <p className="text-stone-600 text-sm mb-6">
-          Wallpaper, motion, and other look-and-feel options live here. More controls
-          will be added over time.
-        </p>
         <BackgroundSettings />
         <section className="mt-10 pt-6 border-t border-stone-200">
           <h2 className="text-lg font-medium text-stone-800 mb-2">Motion</h2>
