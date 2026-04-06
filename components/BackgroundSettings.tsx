@@ -9,7 +9,19 @@ type CustomBg = { id: string; value: string; displayName?: string | null };
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
-export function BackgroundSettings() {
+type Props = {
+  /** When false, arrow-key cycling is disabled (e.g. Style tab hidden but component still mounted). */
+  panelActive?: boolean;
+};
+
+const ARROW_CYCLE_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+]);
+
+export function BackgroundSettings({ panelActive = true }: Props) {
   const bgContext = useBackgroundContext();
   const [error, setError] = useState<string | null>(null);
   const [customBackgrounds, setCustomBackgrounds] = useState<CustomBg[]>([]);
@@ -30,6 +42,65 @@ export function BackgroundSettings() {
   useEffect(() => {
     fetchCustom();
   }, [fetchCustom]);
+
+  const currentBgId = bgContext?.currentBgId ?? null;
+  const setBackground = bgContext?.setBackground;
+
+  useEffect(() => {
+    if (
+      !showAll ||
+      !panelActive ||
+      cropFile ||
+      customBackgrounds.length < 2 ||
+      !setBackground
+    ) {
+      return;
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!ARROW_CYCLE_KEYS.has(e.key)) return;
+      const el = document.activeElement;
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+      if (el instanceof HTMLElement && el.isContentEditable) return;
+      if (el instanceof HTMLElement && el.closest('[role="dialog"]')) return;
+
+      const idx = customBackgrounds.findIndex((b) => b.id === currentBgId);
+      const len = customBackgrounds.length;
+      const forward = e.key === "ArrowDown" || e.key === "ArrowRight";
+      const nextIdx =
+        forward
+          ? idx < 0
+            ? 0
+            : (idx + 1) % len
+          : idx < 0
+            ? len - 1
+            : (idx - 1 + len) % len;
+      e.preventDefault();
+      const bg = customBackgrounds[nextIdx];
+      setBackground({
+        id: bg.id,
+        type: "image",
+        value: bg.value,
+        overlay: 0.35,
+      });
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    showAll,
+    panelActive,
+    cropFile,
+    customBackgrounds,
+    currentBgId,
+    setBackground,
+  ]);
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +181,6 @@ export function BackgroundSettings() {
     }
   }, [fetchCustom]);
 
-  const currentBgId = bgContext?.currentBgId ?? null;
   let visibleBackgrounds: CustomBg[];
   if (showAll) {
     visibleBackgrounds = customBackgrounds;
@@ -125,7 +195,7 @@ export function BackgroundSettings() {
   }
 
   return (
-    <section className="mt-8 pt-6 border-t border-stone-200">
+    <section>
       <h2 className="text-lg font-medium text-stone-800 mb-2">
         Background gallery
       </h2>
