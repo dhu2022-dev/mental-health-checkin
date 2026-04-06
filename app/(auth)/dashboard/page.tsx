@@ -115,6 +115,14 @@ function downloadCSV(checkIns: CheckIn[]) {
 
 const DASHBOARD_FADE_MS = 500;
 
+/** Uses the viewer's local clock (client time zone). */
+function localTimeGreeting(date = new Date()): string {
+  const hour = date.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 function HomeIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -258,8 +266,11 @@ export default function DashboardPage() {
                 <HomeIcon className="h-5 w-5" />
               </Link>
             </div>
-            <h1 className="min-w-0 flex-1 text-center text-xl font-semibold tracking-tight text-stone-800 sm:text-2xl">
-              Your check-ins
+            <h1
+              className="min-w-0 flex-1 text-center text-xl font-semibold tracking-tight text-stone-800 sm:text-2xl"
+              suppressHydrationWarning
+            >
+              {localTimeGreeting()}
             </h1>
             <div className="flex max-w-[40%] shrink-0 justify-end sm:max-w-none">
               <form action="/api/auth/logout" method="POST">
