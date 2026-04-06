@@ -542,7 +542,7 @@ export default function DashboardPage() {
         aria-labelledby="tab-style"
         hidden={mainTab !== "style"}
       >
-        <BackgroundSettings />
+        <BackgroundSettings panelActive={mainTab === "style"} />
         <section className="mt-10 pt-6 border-t border-stone-200">
           <h2 className="text-lg font-medium text-stone-800 mb-2">Motion</h2>
           <p className="text-stone-500 text-sm">
