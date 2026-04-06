@@ -115,8 +115,11 @@ function downloadCSV(checkIns: CheckIn[]) {
 
 const DASHBOARD_FADE_MS = 500;
 
+type DashboardTab = "overview" | "style";
+
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const [mainTab, setMainTab] = useState<DashboardTab>("overview");
   const [rangeIndex, setRangeIndex] = useState(0); // 7 days default
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,6 +234,51 @@ export default function DashboardPage() {
         </form>
       </header>
 
+      <div
+        className="flex gap-8 border-b border-stone-200 mb-6"
+        role="tablist"
+        aria-label="Dashboard sections"
+      >
+        <button
+          type="button"
+          role="tab"
+          id="tab-overview"
+          aria-selected={mainTab === "overview" ? "true" : "false"}
+          aria-controls="panel-overview"
+          tabIndex={mainTab === "overview" ? 0 : -1}
+          onClick={() => setMainTab("overview")}
+          className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            mainTab === "overview"
+              ? "border-stone-800 text-stone-900"
+              : "border-transparent text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-style"
+          aria-selected={mainTab === "style" ? "true" : "false"}
+          aria-controls="panel-style"
+          tabIndex={mainTab === "style" ? 0 : -1}
+          onClick={() => setMainTab("style")}
+          className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            mainTab === "style"
+              ? "border-stone-800 text-stone-900"
+              : "border-transparent text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          Style
+        </button>
+      </div>
+
+      <div
+        id="panel-overview"
+        role="tabpanel"
+        aria-labelledby="tab-overview"
+        hidden={mainTab !== "overview"}
+      >
       <section className="mb-8">
         <label className="block text-sm font-medium text-stone-600 mb-2">
           Date range
@@ -239,6 +287,7 @@ export default function DashboardPage() {
           {RANGES.map((r, i) => (
             <button
               key={r.label}
+              type="button"
               onClick={() => setRangeIndex(i)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 rangeIndex === i
@@ -428,8 +477,26 @@ export default function DashboardPage() {
           </section>
         </>
       )}
+      </div>
 
+      <div
+        id="panel-style"
+        role="tabpanel"
+        aria-labelledby="tab-style"
+        hidden={mainTab !== "style"}
+      >
+        <p className="text-stone-600 text-sm mb-6">
+          Wallpaper, motion, and other look-and-feel options live here. More controls
+          will be added over time.
+        </p>
         <BackgroundSettings />
+        <section className="mt-10 pt-6 border-t border-stone-200">
+          <h2 className="text-lg font-medium text-stone-800 mb-2">Motion</h2>
+          <p className="text-stone-500 text-sm">
+            Animation and intro preferences coming soon.
+          </p>
+        </section>
+      </div>
 
         <footer className="mt-8 pt-6 border-t border-stone-200 text-stone-500 text-sm">
           <p>
