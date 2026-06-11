@@ -7,16 +7,17 @@ Daily mood tracking via iPhone Shortcut, with a Next.js dashboard, Supabase pers
 ### System overview
 
 ```mermaid
+%%{init: {"themeVariables": {"edgeLabelBackground": "transparent"}}}%%
 flowchart LR
-    shortcut["iPhone Shortcut"] -->|"POST /api/checkin"| app
-    browser["Browser"] -->|"login / dashboard"| app
+    shortcut("iPhone Shortcut") -->|"POST /api/checkin"| app
+    browser("Browser") -->|"login / dashboard"| app
 
     subgraph vercel["Vercel"]
-        app["Next.js 15 app<br/>pages + API routes"]
+        app("Next.js 15 app<br/>pages + API routes")
     end
 
     subgraph supabase["Supabase"]
-        auth["Auth"]
+        auth("Auth")
         db[("Postgres")]
         bucket[("Storage<br/>backgrounds")]
     end
@@ -24,7 +25,7 @@ flowchart LR
     app --> auth
     app --> db
     app --> bucket
-    app -->|"insights"| openai["OpenAI<br/>gpt-4o-mini"]
+    app -->|"insights"| openai("OpenAI<br/>gpt-4o-mini")
 
     classDef client fill:#dbeafe,stroke:#60a5fa,color:#1e3a8a
     classDef app fill:#e2e8f0,stroke:#64748b,color:#0f172a
@@ -43,18 +44,19 @@ flowchart LR
 ### API routes → data
 
 ```mermaid
+%%{init: {"themeVariables": {"edgeLabelBackground": "transparent"}}}%%
 flowchart LR
-    checkin["POST /api/checkin<br/>?raw=date;mood;notes"] --> check_ins[("check_ins")]
-    checkins["GET /api/checkins"] --> check_ins
+    checkin("POST /api/checkin<br/>?raw=date;mood;notes") --> check_ins[("check_ins")]
+    checkins("GET /api/checkins") --> check_ins
 
-    insights["POST /api/insights"] -->|"read range"| check_ins
-    insights -->|"analyze"| openai["OpenAI"]
+    insights("POST /api/insights") -->|"read"| check_ins
+    insights --> openai("OpenAI")
     insights -->|"store"| insights_t[("insights")]
 
-    background["/api/background<br/>GET / POST / DELETE"] --> bg_t[("background_images")]
+    background("/api/background<br/>GET / POST / DELETE") --> bg_t[("background_images")]
     background --> bucket[("backgrounds bucket")]
 
-    logout["POST /api/auth/logout"] --> auth["Supabase Auth"]
+    logout("POST /api/auth/logout") --> auth("Supabase Auth")
 
     classDef route fill:#e2e8f0,stroke:#64748b,color:#0f172a
     classDef supa fill:#d1fae5,stroke:#34d399,color:#065f46
