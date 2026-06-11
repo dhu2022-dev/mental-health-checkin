@@ -266,11 +266,8 @@ export default function DashboardPage() {
                 <HomeIcon className="h-5 w-5" />
               </Link>
             </div>
-            <h1
-              className="min-w-0 flex-1 text-center text-xl font-semibold tracking-tight text-stone-800 sm:text-2xl"
-              suppressHydrationWarning
-            >
-              {localTimeGreeting()}
+            <h1 className="min-w-0 flex-1 text-center text-xl font-semibold tracking-tight text-stone-800 sm:text-2xl">
+              {mounted ? localTimeGreeting() : "\u00A0"}
             </h1>
             <div className="flex max-w-[40%] shrink-0 justify-end sm:max-w-none">
               <form action="/api/auth/logout" method="POST">
