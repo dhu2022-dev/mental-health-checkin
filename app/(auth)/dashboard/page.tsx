@@ -15,6 +15,7 @@ import {
   Legend,
 } from "recharts";
 import type { CheckIn } from "@/lib/db";
+import { CheckInModal } from "@/components/CheckInModal";
 
 type Insight = {
   id: string;
@@ -150,6 +151,7 @@ export default function DashboardPage() {
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -175,7 +177,7 @@ export default function DashboardPage() {
 
   useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
+  const fetchCheckIns = useCallback(() => {
     const range = RANGES[rangeIndex];
     const now = new Date();
     const to = now;
@@ -196,6 +198,10 @@ export default function DashboardPage() {
       .catch(() => setError("Failed to load check-ins"))
       .finally(() => setLoading(false));
   }, [rangeIndex]);
+
+  useEffect(() => {
+    fetchCheckIns();
+  }, [fetchCheckIns]);
 
   useEffect(() => {
     setInsightsLoading(true);
@@ -269,7 +275,7 @@ export default function DashboardPage() {
             <h1 className="min-w-0 flex-1 text-center text-xl font-semibold tracking-tight text-stone-800 sm:text-2xl">
               {mounted ? localTimeGreeting() : "\u00A0"}
             </h1>
-            <div className="flex max-w-[40%] shrink-0 justify-end sm:max-w-none">
+            <div className="flex shrink-0 justify-end sm:max-w-none">
               <form action="/api/auth/logout" method="POST">
                 <button
                   type="submit"
@@ -550,11 +556,36 @@ export default function DashboardPage() {
 
         <footer className="mt-8 pt-6 border-t border-stone-200 text-stone-500 text-sm">
           <p>
-            Add check-ins from your iPhone shortcut (POST to /api/checkin).
+            Check in here or via your iPhone Shortcut.
           </p>
         </footer>
       </main>
       </BackgroundWrapper>
+
+      {/* Floating check-in button */}
+      {!showCheckInModal && (
+        <button
+          type="button"
+          onClick={() => setShowCheckInModal(true)}
+          aria-label="Add a check-in for today"
+          className="fixed bottom-8 right-8 z-40 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-stone-600 shadow-xl transition hover:text-stone-900 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Check in
+        </button>
+      )}
+
+      {showCheckInModal && (
+        <CheckInModal
+          onClose={() => setShowCheckInModal(false)}
+          onSuccess={() => {
+            setShowCheckInModal(false);
+            fetchCheckIns();
+          }}
+        />
+      )}
     </div>
   );
 }
